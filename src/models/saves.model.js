@@ -1,5 +1,4 @@
 import mongoose, { Schema } from "mongoose";
-import validator from "validator";
 import { emptyError, enumError } from "./errors";
 
 const resourceType  = ['Album', 'Playlist'];
@@ -45,7 +44,7 @@ const SaveSchema = new Schema({
     }
 })
 
-SaveSchema.index({ user: 1, resource: 1, resourceId: 1 }, { unique: true });
+SaveSchema.index({ user: 1, resource: 1 , savedBy: 1}, { unique: true });
 
 const Save = mongoose.model('Save', SaveSchema);
 export default Save;

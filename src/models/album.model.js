@@ -1,5 +1,9 @@
 import mongoose, { Schema } from "mongoose";
 import validator from 'validator';
+import {emptyError, enumError, maxCharError, minEleError, requiredError, urlError} from "./errors.js";
+
+const albumType = ['singles','ep','album'];
+const visibilityType = ['public', 'private', 'unlisted'];
 
 const validateArray = (value) => {
     return Array.isArray(value) && value.length >= 1;
@@ -10,60 +14,66 @@ const AlbumSchema = new Schema({
         type: String,
         required: true,
         trim: true,
-        minlength: [1, 'album.name cannot be empty'],
-        maxlength: [50, 'album.name cannot exceed 50 characters']
+        minlength: [1, ()=> emptyError('album.name')],
+        maxlength: [50, ()=> maxCharError('album.name' , 50)]
     },
     type: {
         type: String,
-        enum: ['singles','ep','album'],
+        enum: {
+            values: albumType,
+            message: ()=> enumError('album.type',albumType)
+        },
         default: 'album'
     },
     primaryArtist: {
         type: Schema.Types.ObjectId,
         ref: 'Artist',
-        required: true
+        required: [true , ()=>requiredError('album.primaryArtist')]
     },
     artists: {
         type: [Schema.Types.ObjectId],
         ref: 'Artist',
-        required: true,
+        required: [true , ()=> requiredError('album.artist')],
         validate: {
             validator: validateArray,
-            message: "playlist.artists must be an array containing at least 1 element"
+            message: ()=> minEleError('album.artist' , 1)
         }
     },
     trackList: {
         type: [Schema.Types.ObjectId],
         ref: 'Track',
+        required: true,
         validate: {
             validator: validateArray,
-            message: "playlist.trackList must be an array containing at least 1 element"
+            message: ()=> minEleError('album.trackList' , 1)
         }
     },
     coverArt: {
         src: {
             type: String,
-            required: true,
+            required: [true , ()=> requiredError('coverArt.src')],
             validate: {
                 validator: validator.isURL,
-                message: "Please input a valid URL"
+                message: urlError('album.coverArt.src')
             }
         },
         publicId: {
             type: String,
+            default: ""
         }
     },
     backgroundArt: {
         src: {
             type: String,
-            required: true,
+            required: [true , ()=> requiredError('backgroundArt.src')],
             validate: {
                 validator: validator.isURL,
-                message: "Please input a valid URL"
+                message: urlError('album.backgroundArt.src')
             }
         },
         publicId: {
             type: String,
+            default: ""
         }
     },
     description: {
@@ -72,7 +82,10 @@ const AlbumSchema = new Schema({
     },
     visibility: {
         type: String,
-        enum: ['public', 'private', 'unlisted'],
+        enum: {
+            values: visibilityType,
+            message: ()=> enumError('album.visibility',visibilityType)
+        },
         default: 'public'
     },
     saveCount: {

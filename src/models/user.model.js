@@ -1,24 +1,27 @@
 import mongoose, { Schema } from "mongoose";
+import {emptyError, enumError, maxCharError, minCharError, requiredError, urlError} from "./errors.js";
+
+const subscriptionType = ['premium','student','standart']
 
 const UserSchema = new Schema({
     username: {
         type: String,
-        required: true,
+        required: [true , ()=> requiredError('user.username')],
         trim: true,
         unique: true,
-        minlength: [3, 'user.username must be at least 3 characters long'],
-        maxlength: [30, 'user.username cannot exceed 30 characters'],
+        minlength: [3, ()=>minCharError('user.username',3)],
+        maxlength: [30, ()=>maxCharError('user.username' , 30)],
     },
     fullName: {
         type: String,
         trim: true,
         unique: true,
-        minlength: [3, 'user.fullName must be at least 3 characters long'],
-        maxlength: [30, 'user.fullName cannot exceed 30 characters'],
+        minlength: [3, ()=>minCharError('user.fullName',3)],
+        maxlength: [30, ()=>maxCharError('user.fullName' , 30)],
     },
     email: {
         type: String,
-        required: [true, 'Email is required'],
+        required: [true, ()=>requiredError('user.email')],
         unique: true,
         lowercase: true,
         validate: {
@@ -28,8 +31,8 @@ const UserSchema = new Schema({
     },
     password: {
         type: String,
-        required: [true, 'user.password is required'],
-        minlength: [6, 'user.password must be at least 6 characters long'],
+        required: [true, ()=> requiredError('user.password')],
+        minlength: [6, ()=>minCharError('user.password', 6)],
     },
     profilePicture: {
         src:{
@@ -37,7 +40,7 @@ const UserSchema = new Schema({
             default: "https://res.cloudinary.com/dww0antkw/image/upload/v1747984790/deafultImg_woxk8f.png",
             validate: {
                 validator: validator.isURL,
-                message: "Please input a valid url"
+                message: ()=> urlError('user.profilePicture.src')
             }
         },
         publicId:{
@@ -48,14 +51,14 @@ const UserSchema = new Schema({
     bio: {
         type: String,
         deafult: "Artist hasn't yet added a description in bio",
-        maxlength: [150, 'user.bio cannot exceed 150 characters'],
+        maxlength: [150, ()=> maxCharError('user.bio' , 150)],
     },
     location: {
         country: {
             type: String,
             trim: true,
             lowercase: true,
-            required: [true, 'user.location.country cannot be empty']
+            required: [true, ()=> requiredError('user.location.country')]
         },
         state: {
             type: String,
@@ -75,6 +78,7 @@ const UserSchema = new Schema({
     },
     dob: {
         type: Date,
+        required: [ true , ()=> requiredError('user.dob') ],
         validate: {
             validator: function(value) {
                 // Ensure the user is at least 13 years old
@@ -109,7 +113,10 @@ const UserSchema = new Schema({
     },
     subscription:{
         type: String,
-        enum: ['premium','student','standart'],
+        enum: {
+            values: subscriptionType,
+            message: ()=> enumError('user.subscription' , subscriptionType)
+        },
         default: 'standard'
     }
 },

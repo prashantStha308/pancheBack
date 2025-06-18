@@ -1,6 +1,9 @@
 export const emptyError = (val)=> `${val} cannot be empty`;
+export const requiredError = (val)=> `${val} is required`;
 export const minCharError = (val , min) => `${val} must atleast have ${min} charcater`;
 export const maxCharError = ( val , max ) => `${val} cannot exceed ${max} characters`;
+export const minEleError = ( val , min ) => `${val} must atleast have ${min} elements`;
+export const urlError = (val) => `Invalid URL in ${val}`;
 export const enumError = (val , enums)=>{
     enums = Array.isArray(enums) ? enums : [enums] ;
 
