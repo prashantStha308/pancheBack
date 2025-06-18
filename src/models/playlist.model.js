@@ -1,5 +1,9 @@
-import mongoose, { Collection, Schema } from "mongoose";
+import mongoose, { Schema } from "mongoose";
 import validator from 'validator';
+import {emptyError, enumError, maxCharError, minEleError, requiredError, urlError} from "./errors.js";
+
+const playlistType = ['singles','ep','album','playlist'];
+const visibilityType = ['public', 'private', 'unlisted'];
 
 const validateArray = (value) => {
     return Array.isArray(value) && value.length >= 1;
@@ -8,46 +12,40 @@ const validateArray = (value) => {
 const PlaylistSchema = new Schema({
     name: {
         type: String,
-        required: true,
+        required: [true , ()=> requiredError('playlist.name')],
         trim: true,
-        minlength: [3, 'playlist.names must have at least 3 characters'],
-        maxlength: [50, 'playlist.names cannot exceed 50 characters']
+        minlength: [1, ()=> emptyError('playlist.name')],
+        maxlength: [50, ()=> maxCharError('playlist.name' , 50)]
     },
     type: {
         type: String,
-        enum: ['playlist'],
+        enum: {
+            values: playlistType,
+            message: ()=> enumError('playlist.type',playlistType)
+        },
         default: 'playlist'
     },
-    creator: {
+    primaryArtist: {
         type: Schema.Types.ObjectId,
-        ref: 'User',
-        required: true,
-    },
-    artists: {
-        type: [Schema.Types.ObjectId],
         ref: 'Artist',
-        required: true,
-        validate: {
-            validator: validateArray,
-            message: "playlist.artists must be an array containing at least 1 element"
-        }
     },
-    trackList: {
-        type: [Schema.Types.ObjectId],
+    artists: [{
+        type: Schema.Types.ObjectId,
+        ref: 'Artist',
+        required: [true , ()=> requiredError('playlist.artist')],
+    }],
+    trackList: [{
+        type: Schema.Types.ObjectId,
         ref: 'Track',
         required: true,
-        validate: {
-            validator: validateArray,
-            message: "playlist.trackList must be an array containing at least 1 element"
-        }
-    },
+    }],
     coverArt: {
         src: {
             type: String,
-            default: "https://res.cloudinary.com/dww0antkw/image/upload/v1747984790/deafultImg_woxk8f.png",
+            required: [true , ()=> requiredError('coverArt.src')],
             validate: {
                 validator: validator.isURL,
-                message: "Please input a valid url"
+                message: urlError('playlist.coverArt.src')
             }
         },
         publicId: {
@@ -56,12 +54,12 @@ const PlaylistSchema = new Schema({
         }
     },
     backgroundArt: {
-         src: {
+        src: {
             type: String,
-            default: "https://res.cloudinary.com/dww0antkw/image/upload/v1747984790/deafultImg_woxk8f.png",
+            required: [true , ()=> requiredError('backgroundArt.src')],
             validate: {
                 validator: validator.isURL,
-                message: "Please input a valid url"
+                message: urlError('playlist.backgroundArt.src')
             }
         },
         publicId: {
@@ -71,16 +69,25 @@ const PlaylistSchema = new Schema({
     },
     description: {
         type: String,
-        default: ""
+        default: "" 
     },
-    visibility:{
+    visibility: {
         type: String,
-        enum: ['public', 'private', 'unlisted'],
+        enum: {
+            values: visibilityType,
+            message: ()=> enumError('playlist.visibility',visibilityType)
+        },
         default: 'public'
     },
-    saveCount: {
-        type: Number,
-        default: 0
+    saves: {
+        count: {
+            type: Number,
+            default: 0
+        },
+        savedBy: [{
+            type: Schema.Types.ObjectId,
+            ref: 'User'
+        }]
     },
     viewCount: {
         type: Number,
@@ -88,12 +95,11 @@ const PlaylistSchema = new Schema({
     },
     totalDuration: {
         type: Number,
-        default: 0,
+        default: 0
     }
 }, {
     timestamps: true
 })
 
 const Playlist = mongoose.model('Playlist', PlaylistSchema);
-
 export default Playlist;

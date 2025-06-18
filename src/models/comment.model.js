@@ -1,4 +1,5 @@
 import mongoose, { Schema } from "mongoose";
+import { requiredError } from "./errors";
 
 const CommentSchema = new Schema({
     track: {
@@ -9,13 +10,17 @@ const CommentSchema = new Schema({
     commentor: {
         type: Schema.Types.ObjectId,
         ref: 'User',
-        required: true
+        required: [true , ()=> requiredError('comment.commentor')]
     },
     content: {
         type: String,
-        required: 'true'
+        required: [true , ()=> requiredError('comment.content')]
     },
     likes: {
+        type: Number,
+        default: 0
+    },
+    views: {
         type: Number,
         default: 0
     }

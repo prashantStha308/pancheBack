@@ -1,7 +1,8 @@
 import mongoose, { Schema } from "mongoose";
-import {emptyError, enumError, maxCharError, minCharError, requiredError, urlError} from "./errors.js";
+import { enumError, maxCharError, minCharError, requiredError, urlError} from "./errors.js";
 
-const subscriptionType = ['premium','student','standart']
+const subscriptionType = ['premium', 'student', 'standart']
+const userTypes = ['user', 'artist'];
 
 const UserSchema = new Schema({
     username: {
@@ -34,6 +35,15 @@ const UserSchema = new Schema({
         required: [true, ()=> requiredError('user.password')],
         minlength: [6, ()=>minCharError('user.password', 6)],
     },
+    role: {
+        type: String,
+        lowercase: true,
+        enum: {
+            values: userTypes,
+            message: ()=> enumError('user.role' , userTypes )
+        },
+        default: 'user'
+    },
     profilePicture: {
         src:{
             type: String,
@@ -50,7 +60,7 @@ const UserSchema = new Schema({
     },
     bio: {
         type: String,
-        deafult: "Artist hasn't yet added a description in bio",
+        deafult: "Artist hasn't yet added a bio",
         maxlength: [150, ()=> maxCharError('user.bio' , 150)],
     },
     location: {
@@ -95,24 +105,34 @@ const UserSchema = new Schema({
         type: Number,
         default: 0
     },
-    followers: {
-        type: [Schema.Types.ObjectId],
+    followers: [{
+        type: Schema.Types.ObjectId,
         ref: 'User'
-    },
+    }],
     followingCount: {
         type: Number,
         default: 0
     },
-    following: {
-        type: [Schema.Types.ObjectId],
+    following: [{
+        type: Schema.Types.ObjectId,
         ref: 'User'
-    },
-    playlists: {
-        type: [Schema.Types.ObjectId],
+    }],
+    playlists: [{
+        type: Schema.Types.ObjectId,
         ref: 'Playlist'
-    },
+    }],
+    trackList: [{
+        type: Schema.Types.ObjectId,
+        ref: 'Track'
+    }],
+    savedTracks: [{
+        type: Schema.Types.ObjectId,
+        ref: 'Track'
+    }],
     subscription:{
         type: String,
+        trim: true,
+        lowercase: true,
         enum: {
             values: subscriptionType,
             message: ()=> enumError('user.subscription' , subscriptionType)
