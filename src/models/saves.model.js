@@ -1,23 +1,33 @@
 import mongoose, { Schema } from "mongoose";
+import validator from "validator";
+import { emptyError, enumError } from "./errors";
+
+const resourceType  = ['Album', 'Playlist'];
+const savedUserType = ['User', 'Artist'];
 
 const SaveSchema = new Schema({
     user: {
         type: Schema.Types.ObjectId,
         ref: 'User',
-        required: true
-    },
-    resourceId: {
-        type: Schema.Types.ObjectId,
-        required: true,
+        required: [true , ()=>emptyError('saves.user')]
     },
     resource: {
-        type: String,
-        enum: ['Album', 'Playlist'], //Model names haru, to take reference while populating
-        required: true
+        id:{
+            type: Schema.Types.ObjectId,
+            required: [true , ()=>emptyError('saves.resource.id')],
+        },
+        type:{
+            type: String,
+            enum: {
+                values: resourceType,//Model names haru, to take reference while populating
+                message: ()=>enumError('save.resource.type',resourceType )
+            },
+            required: [true,()=>emptyError('saves.resource.type')]
+        }
     },
     saveCount: {
         type: Number,
-        default: 0
+        default: 0,
     },
     savedBy: {
         id: {
@@ -28,8 +38,8 @@ const SaveSchema = new Schema({
             type: String,
             required: true,
             enum: {
-                values: ['User', 'Artist'],
-                message: "save.savedBy.userType must be either 'User' or 'Artist'"
+                values: savedUserType,
+                message: ()=>enumError('save.savedBy.userType',savedUserType)
             },
         }
     }

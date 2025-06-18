@@ -29,14 +29,20 @@ const UserSchema = new Schema({
     password: {
         type: String,
         required: [true, 'user.password is required'],
-        minlength: [6, 'Password must be at least 6 characters long'],
+        minlength: [6, 'user.password must be at least 6 characters long'],
     },
     profilePicture: {
-        type: String,
-        default: "https://res.cloudinary.com/dww0antkw/image/upload/v1747984790/deafultImg_woxk8f.png",
-        validate: {
-            validator: validator.isURL,
-            message: "Please input a valid url"
+        src:{
+            type: String,
+            default: "https://res.cloudinary.com/dww0antkw/image/upload/v1747984790/deafultImg_woxk8f.png",
+            validate: {
+                validator: validator.isURL,
+                message: "Please input a valid url"
+            }
+        },
+        publicId:{
+            type: String,
+            default: ""
         }
     },
     bio: {
@@ -47,16 +53,24 @@ const UserSchema = new Schema({
     location: {
         country: {
             type: String,
-            required: true
+            trim: true,
+            lowercase: true,
+            required: [true, 'user.location.country cannot be empty']
         },
         state: {
-            type: String
+            type: String,
+            trim: true,
+            lowercase: true,
         },
         province: {
-            type: String
+            type: String,
+            trim: true,
+            lowercase: true,
         },
         city: {
-            type: String
+            type: String,
+            trim: true,
+            lowercase: true,
         }
     },
     dob: {
@@ -77,22 +91,27 @@ const UserSchema = new Schema({
         type: Number,
         default: 0
     },
-    followers: [{
-        type: Schema.Types.ObjectId,
+    followers: {
+        type: [Schema.Types.ObjectId],
         ref: 'User'
-    }],
+    },
     followingCount: {
         type: Number,
         default: 0
     },
-    following: [{
-        type: Schema.Types.ObjectId,
+    following: {
+        type: [Schema.Types.ObjectId],
         ref: 'User'
-    }],
-    playlist: [{
-        type: Schema.Types.ObjectId,
+    },
+    playlists: {
+        type: [Schema.Types.ObjectId],
         ref: 'Playlist'
-    }]
+    },
+    subscription:{
+        type: String,
+        enum: ['premium','student','standart'],
+        default: 'standard'
+    }
 },
 {
     timestamps: true
