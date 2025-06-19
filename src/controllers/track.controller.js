@@ -1,6 +1,6 @@
-import Track from "../models/track.model";
-import { deleteFromCloudinary, uploadToCloudinary } from "../services/cloudinary.services";
-import { ApiError } from "../utils/ApiError";
+import Track from "../models/track.model.js";
+import { deleteFromCloudinary, uploadToCloudinary } from "../services/cloudinary.services.js";
+import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { parseBuffer } from "music-metadata";
 
@@ -82,13 +82,21 @@ export const createTrack = async (req, res, next) => {
 
 export const getAllTracks = async ( req ,res , next ) => {
     try {
-        const { page = 1, limit = 5 } = req.query;
+        let { page = 1, limit = 5 } = req.query;
         page = Math.max(1, parseInt(page));
         limit = Math.max(1, parseInt(limit));
 
-        const trackRes = await Track.find({}).skip( ( page - 1 ) * limit ).limit(limit);
+        const trackRes = await Track.find({}).skip((page - 1) * limit).limit(limit).populate({
+            path: 'primaryArtist',
+            select: 'username , profilePicture , bio , followerCount'
+        }). populate({
+            path: 'artists',
+            select: 'username , profilePicture , bio , followerCount'
+        });
+
+        return res.status(200).json(new ApiResponse(200, 'Successfully fetched tracks', trackRes));
+
     } catch (error) {
-        
         return new ApiError(500, `Something went wrong with error: ${error} `);
     }
 }

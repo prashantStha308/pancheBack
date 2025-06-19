@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import { emptyError, enumError, maxCharError, requiredError, urlError } from "./errors";
+import { emptyError, enumError, maxCharError, requiredError, urlError } from "./errors.js";
 import validator from "validator";
 
 const visibilityType = ['public', 'private', 'unlisted'];
@@ -7,16 +7,16 @@ const visibilityType = ['public', 'private', 'unlisted'];
 const TrackSchema = new Schema({
     name: {
         type: String,
-        required: [true, () => requiredError('track.name')],
+        required: [true, requiredError('track.name')],
         lowercase: true,
         trim: true,
-        minlength: [1, ()=> emptyError('track.name')],
-        maxlength: [50 , ()=> maxCharError('track.name' , 50)]
+        minlength: [1, emptyError('track.name')],
+        maxlength: [50 , maxCharError('track.name' , 50)]
     },
     primaryArtist: {
         type: Schema.Types.ObjectId,
         ref: 'User',
-        required: [true , ()=> requiredError('track.primaryArtist')]
+        required: [true ,requiredError('track.primaryArtist')]
     },
     artists: [{
         type: Schema.Types.ObjectId,
@@ -25,7 +25,7 @@ const TrackSchema = new Schema({
     coverArt: {
         src: {
             type: String,
-            required: [true , ()=> requiredError('coverArt.src')],
+            required: [true , requiredError('coverArt.src')],
             validate: {
                 validator: validator.isURL,
                 message: urlError('playlist.coverArt.src')
@@ -55,7 +55,7 @@ const TrackSchema = new Schema({
             required: [true, requiredError('track.audio.src')],
             validate: {
                 validator: validator.isURL,
-                message: ()=> urlError('track.audio.src')
+                message: urlError('track.audio.src')
             }
         },
         publicId: {
@@ -71,7 +71,7 @@ const TrackSchema = new Schema({
         type: String,
         enum: {
             values: visibilityType,
-            message: ()=> enumError('track.visibility' , visibilityType)
+            message:  enumError('track.visibility' , visibilityType)
         },
         default: 'public'
     },

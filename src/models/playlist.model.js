@@ -12,16 +12,16 @@ const validateArray = (value) => {
 const PlaylistSchema = new Schema({
     name: {
         type: String,
-        required: [true , ()=> requiredError('playlist.name')],
+        required: [true ,  requiredError('playlist.name')],
         trim: true,
-        minlength: [1, ()=> emptyError('playlist.name')],
-        maxlength: [50, ()=> maxCharError('playlist.name' , 50)]
+        minlength: [1,  emptyError('playlist.name')],
+        maxlength: [50,  maxCharError('playlist.name' , 50)]
     },
     type: {
         type: String,
         enum: {
             values: playlistType,
-            message: ()=> enumError('playlist.type',playlistType)
+            message:  enumError('playlist.type',playlistType)
         },
         default: 'playlist'
     },
@@ -32,7 +32,7 @@ const PlaylistSchema = new Schema({
     artists: [{
         type: Schema.Types.ObjectId,
         ref: 'Artist',
-        required: [true , ()=> requiredError('playlist.artist')],
+        required: [true ,  requiredError('playlist.artist')],
     }],
     trackList: [{
         type: Schema.Types.ObjectId,
@@ -42,7 +42,7 @@ const PlaylistSchema = new Schema({
     coverArt: {
         src: {
             type: String,
-            required: [true , ()=> requiredError('coverArt.src')],
+            required: [true ,  requiredError('coverArt.src')],
             validate: {
                 validator: validator.isURL,
                 message: urlError('playlist.coverArt.src')
@@ -56,7 +56,7 @@ const PlaylistSchema = new Schema({
     backgroundArt: {
         src: {
             type: String,
-            required: [true , ()=> requiredError('backgroundArt.src')],
+            required: [true ,  requiredError('backgroundArt.src')],
             validate: {
                 validator: validator.isURL,
                 message: urlError('playlist.backgroundArt.src')
@@ -75,7 +75,7 @@ const PlaylistSchema = new Schema({
         type: String,
         enum: {
             values: visibilityType,
-            message: ()=> enumError('playlist.visibility',visibilityType)
+            message:  enumError('playlist.visibility',visibilityType)
         },
         default: 'public'
     },

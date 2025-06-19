@@ -10,11 +10,11 @@ const CommentSchema = new Schema({
     commentor: {
         type: Schema.Types.ObjectId,
         ref: 'User',
-        required: [true , ()=> requiredError('comment.commentor')]
+        required: [true , requiredError('comment.commentor')]
     },
     content: {
         type: String,
-        required: [true , ()=> requiredError('comment.content')]
+        required: [true , requiredError('comment.content')]
     },
     likes: {
         type: Number,

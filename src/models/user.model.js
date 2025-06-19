@@ -7,22 +7,22 @@ const userTypes = ['user', 'artist'];
 const UserSchema = new Schema({
     username: {
         type: String,
-        required: [true , ()=> requiredError('user.username')],
+        required: [true ,  requiredError('user.username')],
         trim: true,
         unique: true,
-        minlength: [3, ()=>minCharError('user.username',3)],
-        maxlength: [30, ()=>maxCharError('user.username' , 30)],
+        minlength: [3, minCharError('user.username',3)],
+        maxlength: [30, maxCharError('user.username' , 30)],
     },
     fullName: {
         type: String,
         trim: true,
         unique: true,
-        minlength: [3, ()=>minCharError('user.fullName',3)],
-        maxlength: [30, ()=>maxCharError('user.fullName' , 30)],
+        minlength: [3, minCharError('user.fullName',3)],
+        maxlength: [30, maxCharError('user.fullName' , 30)],
     },
     email: {
         type: String,
-        required: [true, ()=>requiredError('user.email')],
+        required: [true, requiredError('user.email')],
         unique: true,
         lowercase: true,
         validate: {
@@ -32,15 +32,15 @@ const UserSchema = new Schema({
     },
     password: {
         type: String,
-        required: [true, ()=> requiredError('user.password')],
-        minlength: [6, ()=>minCharError('user.password', 6)],
+        required: [true,  requiredError('user.password')],
+        minlength: [6, minCharError('user.password', 6)],
     },
     role: {
         type: String,
         lowercase: true,
         enum: {
             values: userTypes,
-            message: ()=> enumError('user.role' , userTypes )
+            message:  enumError('user.role' , userTypes )
         },
         default: 'user'
     },
@@ -50,7 +50,7 @@ const UserSchema = new Schema({
             default: "https://res.cloudinary.com/dww0antkw/image/upload/v1747984790/deafultImg_woxk8f.png",
             validate: {
                 validator: validator.isURL,
-                message: ()=> urlError('user.profilePicture.src')
+                message:  urlError('user.profilePicture.src')
             }
         },
         publicId:{
@@ -61,14 +61,14 @@ const UserSchema = new Schema({
     bio: {
         type: String,
         deafult: "Artist hasn't yet added a bio",
-        maxlength: [150, ()=> maxCharError('user.bio' , 150)],
+        maxlength: [150,  maxCharError('user.bio' , 150)],
     },
     location: {
         country: {
             type: String,
             trim: true,
             lowercase: true,
-            required: [true, ()=> requiredError('user.location.country')]
+            required: [true,  requiredError('user.location.country')]
         },
         state: {
             type: String,
@@ -88,7 +88,7 @@ const UserSchema = new Schema({
     },
     dob: {
         type: Date,
-        required: [ true , ()=> requiredError('user.dob') ],
+        required: [ true ,  requiredError('user.dob') ],
         validate: {
             validator: function(value) {
                 // Ensure the user is at least 13 years old
@@ -135,7 +135,7 @@ const UserSchema = new Schema({
         lowercase: true,
         enum: {
             values: subscriptionType,
-            message: ()=> enumError('user.subscription' , subscriptionType)
+            message:  enumError('user.subscription' , subscriptionType)
         },
         default: 'standard'
     }
