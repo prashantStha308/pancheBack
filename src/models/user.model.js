@@ -1,7 +1,8 @@
 import mongoose, { Schema } from "mongoose";
+import validator from "validator";
 import { enumError, maxCharError, minCharError, requiredError, urlError} from "./errors.js";
 
-const subscriptionType = ['premium', 'student', 'standart']
+const subscriptionType = ['premium', 'student', 'standard']
 const userTypes = ['user', 'artist'];
 
 const UserSchema = new Schema({
@@ -58,9 +59,23 @@ const UserSchema = new Schema({
             default: ""
         }
     },
+    coverPicture: {
+        src:{
+            type: String,
+            default: "https://res.cloudinary.com/dww0antkw/image/upload/v1747984790/deafultImg_woxk8f.png",
+            validate: {
+                validator: validator.isURL,
+                message:  urlError('user.coverPicture.src')
+            }
+        },
+        publicId:{
+            type: String,
+            default: ""
+        }
+    },
     bio: {
         type: String,
-        deafult: "Artist hasn't yet added a bio",
+        deafult: "User hasn't yet added a bio",
         maxlength: [150,  maxCharError('user.bio' , 150)],
     },
     location: {
@@ -88,7 +103,7 @@ const UserSchema = new Schema({
     },
     dob: {
         type: Date,
-        required: [ true ,  requiredError('user.dob') ],
+        // required: [ true ,  requiredError('user.dob') ],
         validate: {
             validator: function(value) {
                 // Ensure the user is at least 13 years old
@@ -101,22 +116,7 @@ const UserSchema = new Schema({
             message: 'You must be at least 13 years old',
         },
     },
-    followersCount: {
-        type: Number,
-        default: 0
-    },
-    followers: [{
-        type: Schema.Types.ObjectId,
-        ref: 'User'
-    }],
-    followingCount: {
-        type: Number,
-        default: 0
-    },
-    following: [{
-        type: Schema.Types.ObjectId,
-        ref: 'User'
-    }],
+    // you can make seperate model for saved tracks, tracklists , playlists haru, same for saves
     playlists: [{
         type: Schema.Types.ObjectId,
         ref: 'Playlist'

@@ -16,7 +16,6 @@ export const uploadToCloudinary = (fileBuffer, folder, resourceType = 'auto') =>
                 if (error) {
                     return reject(error);
                 }
-                console.log(res);
                 resolve(res);
             }
         );
@@ -29,7 +28,6 @@ export const uploadToCloudinary = (fileBuffer, folder, resourceType = 'auto') =>
 export const deleteFromCloudinary = async ( publicId , resourceType ) => {
     try {
         const res = await cloudinary.uploader.destroy( publicId , { resource_type: resourceType } );
-        console.log(res);
         return true;
     } catch (error) {
         console.log(error.message);
