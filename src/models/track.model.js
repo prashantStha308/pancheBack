@@ -46,7 +46,6 @@ const TrackSchema = new Schema({
         },
         publicId: {
             type: String,
-            default: ""
         }
     },
     audio: {
@@ -78,16 +77,6 @@ const TrackSchema = new Schema({
     genre: [{
         type: String,
     }],
-    saves: {
-        count: {
-            type: Number,
-            default: 0
-        },
-        savedBy: [{
-            type: Schema.Types.ObjectId,
-            ref: 'User'
-        }]
-    },
     playCount: {
         type: Number,
         default: 0

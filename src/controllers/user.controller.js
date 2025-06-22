@@ -1,13 +1,14 @@
 import bcrypt from "bcrypt";
 import User from "../models/user.model.js";
-import { deleteFromCloudinary, uploadToCloudinary } from "../services/cloudinary.services.js";
+import { deleteFromCloudinary } from "../services/cloudinary.services.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import Following from "../models/following.model.js"
 import mongoose from "mongoose";
+import { handleImageUploads } from "../utils/helper.js";
 
 export const createUser = async (req, res, next) => {
-    let profileId , coverId;
+    let coverArtId , backgroundId;
     try {
         const body = req.body;
         const location = JSON.parse(body.location);
@@ -23,34 +24,17 @@ export const createUser = async (req, res, next) => {
         }
 
         const hashedPassword = await bcrypt.hash(body.password, 10);
-        
-        if (req.files.profilePicture) {
-            const imgRes = await uploadToCloudinary(req.files.profilePicture[0].buffer, 'image', 'image');
-            profileId = imgRes.public_id;
-            var profilePicture = {
-                src: imgRes.secure_url,
-                publicId: profileId
-            }
-        }
 
-        const coverPicture = {
-            src: profilePicture.src,
-            publicId: profilePicture.publicId
-        }
-
-        if (req.files.coverPicture) {
-            const imgRes = await uploadToCloudinary(req.files.coverPicture[0].buffer, 'image', 'image');
-            coverId = imgRes.public_id;
-            coverPicture.src = imgRes.secure_url;
-            coverPicture.publicId = coverId;
-        }
+        const { coverArt, backgroundArt } = await handleImageUploads(req.files);
+        coverArtId = coverArt.publicId;
+        backgroundId = backgroundArt.publicId !== coverArt.publicId ? backgroundArt.publicId : null;
         
         const user = await User.create({
             ...body,
             location,
             password: hashedPassword,
-            profilePicture,
-            coverPicture,
+            coverArt,
+            backgroundArt,
         })
 
         if (!user) {
@@ -60,11 +44,11 @@ export const createUser = async (req, res, next) => {
         return res.status(201).json(new ApiResponse(200, 'User Created Successfully', { id: user._id }));
 
     } catch (error) {
-        if (coverId) {
-            await deleteFromCloudinary(coverId, 'image', 'image');
+        if (backgroundId) {
+            await deleteFromCloudinary(backgroundId, 'image', 'image');
         }
-        if (profileId) {
-            await deleteFromCloudinary(profileId, 'image', 'image');
+        if (coverArtId) {
+            await deleteFromCloudinary(coverArtId, 'image', 'image');
         }
 
         return next(new ApiError(500, error.message || 'Unexpected error occured'));
@@ -99,25 +83,32 @@ export const userDetails = async (req, res, next) => {
     const { userId } = req.params;
 
     if (!mongoose.Types.ObjectId.isValid(userId)) {
-        throw new ApiError(400, 'Invalid Id');
+        throw new ApiError(404, 'Invalid Id');
     }
 
     const user = await User.findById(userId).select('-password -subscription')
 
     if (!user) {
-        throw new ApiError(400, 'User not found');
+        throw new ApiError(404, 'User not found');
     }
 
     // get followers
-    const followers = await Following.find({ receiver: userId }).select('sender');
+    // populate garnu parne xa
+    const followers = await Following.find({ receiver: userId }).select('sender').populate({
+        path: 'sender',
+        select: '_id username role profilePicture'
+    }).lean();
     const followersList = followers.map(item => item.sender);
 
     // get followings
-    const followings = await Following.find({ sender: userId }).select('receiver');
+    const followings = await Following.find({ sender: userId }).select('receiver').populate({
+        path: 'receiver',
+        select: '_id username role profilePicture'
+    }).lean();
     const followingsList = followings.map(item => item.receiver);
 
     res.status(200).json(new ApiResponse(200, 'User found', {
-        ...user.toObject(),
+        ...user,
         followersCount: followersList.length ,
         followers: followersList,
         followingsCount: followingsList.length,

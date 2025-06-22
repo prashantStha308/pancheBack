@@ -1,55 +1,34 @@
+import mongoose from "mongoose";
 import Track from "../models/track.model.js";
 import { deleteFromCloudinary, uploadToCloudinary } from "../services/cloudinary.services.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { parseBuffer } from "music-metadata";
+import SavedTrack from "../models/saves/trackSave.model.js";
+import { handleFilesUploads } from "../utils/helper.js";
+
 
 export const createTrack = async (req, res, next) => {
     let audioId, coverId, bgId;
     try {
         const { name , primaryArtist , visibility , artists=[] , genre=[] } = req.body;
-        const coverArtFile = req.files.coverArt[0] || null;
-        const trackFile = req.files.trackFile[0] || null;
-        const backgroundFile = req.files.background[0] || null;
 
         if (!name || !primaryArtist || !visibility) {
             return next(new ApiError(400, 'Required fields not submitted'));
         }
 
-        if (!coverArtFile) { return next(new ApiError(400, 'Missing coverArt')) };
-        if (!trackFile) { return next(new ApiError(400, 'Missing Audio file')) };
-
-        // Upload audio and image files
-        const [trackRes, imgRes] = await Promise.all([uploadToCloudinary(trackFile.buffer, 'track', 'video'), uploadToCloudinary(coverArtFile.buffer, 'image', 'image')]);
-
-        // create audio object
-        audioId = trackRes.public_id
-        const audio = {
-            src: trackRes.secure_url,
-            publicId: audioId
-        };
-        // create coverArt object
-        coverId = imgRes.public_id;
-        const coverArt = {
-            src: imgRes.secure_url,
-            publicId: coverId
-        };
-        // Template for backgroundArt Object
-        let backgroundArt = {
-            src: "",
-            publicId: ""
+        // if artists is not passed by client, by make it an array containing only primaryArtist
+        if (!Array.isArray(artists) || artists.length === 0) {
+            artists = [primaryArtist];
         }
 
-        if (backgroundFile) { //upload image if backgroundFile is provided
-            const bgRes = await uploadToCloudinary(backgroundFile.buffer, 'image', 'image');
-            backgroundArt.src = bgRes.secure_url;
-            backgroundArt.publicId = bgRes.public_id;
-            bgId = bgRes.public_id;
-        } else { //else backgroundArt is same as coverArt
-            backgroundArt = {...coverArt};
-        }
+        const { audio, coverArt, backgroundArt } = await handleFilesUploads(req.files);
 
-        const musicMetadata = await parseBuffer(trackFile.buffer, 'audio/mpeg');
+        audioId = audio.publicId;
+        coverId = coverArt.publicId;
+        bgId = backgroundArt.publicId !== coverArt.publicId ? backgroundArt.publicId : null;
+
+        const musicMetadata = await parseBuffer(req.files.track[0].buffer, 'audio/mpeg');
         const totalDuration = musicMetadata.format.duration;
 
         const track = await Track.create({
@@ -99,4 +78,30 @@ export const getAllTracks = async ( req ,res , next ) => {
     } catch (error) {
         return new ApiError(500, `Something went wrong with error: ${error} `);
     }
+}
+
+export const getTrackById = async (req, res, next) => {
+    const { trackId } = req.query;
+
+    if (!mongoose.Types.ObjectId.isValid(trackId)) {
+        throw new ApiError(400, 'Invalid Track Id');
+    }
+
+    const track = await Track.findById(trackId);
+    const saves = await SavedTrack.find({ resource: trackId }).populate({
+        path: 'savedBy',
+        select: '_id username role profilePicture'
+    }).lean();
+    const savedBy = saves.map(item => item.savedBy);
+
+    res.status(200).json(new ApiResponse(200, "Fetched Track Successfully", {
+        ...track,
+        savedBy,
+        saveCount: savedBy.length
+    }))
+
+}
+
+export const updateTrack = async (req, res, next) => {
+    const body = req.body;
 }

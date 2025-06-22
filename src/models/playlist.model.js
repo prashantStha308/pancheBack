@@ -5,10 +5,6 @@ import {emptyError, enumError, maxCharError, minEleError, requiredError, urlErro
 const playlistType = ['singles','ep','album','playlist'];
 const visibilityType = ['public', 'private', 'unlisted'];
 
-const validateArray = (value) => {
-    return Array.isArray(value) && value.length >= 1;
-}
-
 const PlaylistSchema = new Schema({
     name: {
         type: String,
@@ -23,7 +19,7 @@ const PlaylistSchema = new Schema({
             values: playlistType,
             message:  enumError('playlist.type',playlistType)
         },
-        default: 'playlist'
+        required: [true , requiredError('playlist.type')]
     },
     primaryArtist: {
         type: Schema.Types.ObjectId,
@@ -32,7 +28,6 @@ const PlaylistSchema = new Schema({
     artists: [{
         type: Schema.Types.ObjectId,
         ref: 'Artist',
-        required: [true ,  requiredError('playlist.artist')],
     }],
     trackList: [{
         type: Schema.Types.ObjectId,
