@@ -21,13 +21,17 @@ const PlaylistSchema = new Schema({
         },
         required: [true , requiredError('playlist.type')]
     },
+    createdBy: {
+        type: Schema.Types.ObjectId,
+        ref: 'User'
+    },
     primaryArtist: {
         type: Schema.Types.ObjectId,
-        ref: 'Artist',
+        ref: 'User',
     },
     artists: [{
         type: Schema.Types.ObjectId,
-        ref: 'Artist',
+        ref: 'User',
     }],
     trackList: [{
         type: Schema.Types.ObjectId,
@@ -37,7 +41,7 @@ const PlaylistSchema = new Schema({
     coverArt: {
         src: {
             type: String,
-            required: [true ,  requiredError('coverArt.src')],
+            required: [true ,  requiredError('playlist.coverArt.src')],
             validate: {
                 validator: validator.isURL,
                 message: urlError('playlist.coverArt.src')
@@ -45,21 +49,6 @@ const PlaylistSchema = new Schema({
         },
         publicId: {
             type: String,
-            default: ""
-        }
-    },
-    backgroundArt: {
-        src: {
-            type: String,
-            required: [true ,  requiredError('backgroundArt.src')],
-            validate: {
-                validator: validator.isURL,
-                message: urlError('playlist.backgroundArt.src')
-            }
-        },
-        publicId: {
-            type: String,
-            default: ""
         }
     },
     description: {
@@ -73,20 +62,6 @@ const PlaylistSchema = new Schema({
             message:  enumError('playlist.visibility',visibilityType)
         },
         default: 'public'
-    },
-    saves: {
-        count: {
-            type: Number,
-            default: 0
-        },
-        savedBy: [{
-            type: Schema.Types.ObjectId,
-            ref: 'User'
-        }]
-    },
-    viewCount: {
-        type: Number,
-        default: 0
     },
     totalDuration: {
         type: Number,

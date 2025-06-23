@@ -59,20 +59,6 @@ const UserSchema = new Schema({
             default: ""
         }
     },
-    coverPicture: {
-        src:{
-            type: String,
-            default: "https://res.cloudinary.com/dww0antkw/image/upload/v1747984790/deafultImg_woxk8f.png",
-            validate: {
-                validator: validator.isURL,
-                message:  urlError('user.coverPicture.src')
-            }
-        },
-        publicId:{
-            type: String,
-            default: ""
-        }
-    },
     bio: {
         type: String,
         deafult: "User hasn't yet added a bio",

@@ -36,18 +36,6 @@ const TrackSchema = new Schema({
             default: ""
         }
     },
-    backgroundArt: {
-        src: {
-            type: String,
-            validate: {
-                validator: validator.isURL,
-                message: urlError('playlist.backgroundArt.src')
-            }
-        },
-        publicId: {
-            type: String,
-        }
-    },
     audio: {
         src: {
             type: String,

@@ -14,7 +14,7 @@ export const createTrack = async (req, res, next) => {
         const { name , primaryArtist , visibility , artists=[] , genre=[] } = req.body;
 
         if (!name || !primaryArtist || !visibility) {
-            return next(new ApiError(400, 'Required fields not submitted'));
+            throw new ApiError(400, 'Required fields not submitted');
         }
 
         // if artists is not passed by client, by make it an array containing only primaryArtist
@@ -44,7 +44,7 @@ export const createTrack = async (req, res, next) => {
         })
 
         if (!track) {
-            throw new Error("Something went wrong while creating track");
+            throw new ApiError(500,"Something went wrong while creating track");
         }
 
         res.status(201).json(new ApiResponse(201, 'Track Created Successfully', track));
@@ -98,7 +98,7 @@ export const getTrackById = async (req, res, next) => {
         ...track,
         savedBy,
         saveCount: savedBy.length
-    }))
+    }));
 
 }
 

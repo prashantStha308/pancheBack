@@ -1,4 +1,7 @@
+import mongoose from "mongoose";
+import Track from "../models/track.model.js";
 import { uploadToCloudinary } from "../services/cloudinary.services.js";
+import { ApiError } from "./ApiError.js";
 
 export const handleFilesUploads = async ( files ) => {
     if (!files.coverArt) { return next(new ApiError(400, 'Missing coverArt')) };
@@ -35,33 +38,38 @@ export const handleFilesUploads = async ( files ) => {
     return { audio , coverArt , backgroundArt }
 }
 
-export const handleImageUploads = async (files) => {
+export const handleImageUploads = async (file) => {
 
     let coverArt = {
-        src: "",
-        publicId: null
+        src: "https://res.cloudinary.com/dww0antkw/image/upload/v1747984790/deafultImg_woxk8f.png",
+        publicId: ""
     };
 
-    if (files.coverArt) {
-        const imgRes = await uploadToCloudinary(files.coverArt[0].buffer, 'image', 'image');
+    if (file) {
+        const imgRes = await uploadToCloudinary(file[0].buffer, 'image', 'image');
         coverArt = {
             src: imgRes.secure_url,
             publicId:  imgRes.public_id
         };
     }
-
-    let backgroundArt = {
-        src: "",
-        publicId: null
-    }
-
-    if (files.backgroundArt) {
-        const imgRes = await uploadToCloudinary(files.backgroundArt[0].buffer, 'image', 'image');
-        backgroundArt.src = imgRes.secure_url;
-        backgroundArt.publicId = imgRes.public_id;
-    } else {
-        backgroundArt = { ...coverArt }
-    }
     
-    return { coverArt, backgroundArt };
+    return coverArt;
+}
+
+export const reorderTracks = async (trackList) => {
+
+    if (!Array.isArray(trackList) || !trackList.every(item=> mongoose.Types.ObjectId.isValid(item)) ) {
+        throw new ApiError(400, "trackList must be an array of valid ObjectIds");
+    }
+
+    const tracks = await Track.find({ _id: { $in: trackList } });
+
+    const trackCopy = {};
+    tracks.forEach( ( item )=>(
+        trackCopy[item._id.toString()] = item
+    ));
+
+    const reorderedTrackList = trackList.map(id => trackCopy[id.toString()]);
+
+    return reorderedTrackList;
 }

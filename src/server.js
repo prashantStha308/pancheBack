@@ -9,6 +9,7 @@ import validator from "express-validator"
 // Routes imports
 import trackRouter from "./routes/track.routes.js";
 import userRouter from "./routes/user.routes.js";
+import playlistRouter from "./routes/playlist.routes.js";
 
 config();
 const PORT = process.env.PORT;
@@ -22,6 +23,7 @@ app.use(cors());
 // Routes
 app.use('/api/track', trackRouter);
 app.use('/api/user', userRouter);
+app.use('/api/playlist', playlistRouter);
 
 app.listen(PORT, () => {
     console.log(`Server running on: http://localhost:${PORT}`);
