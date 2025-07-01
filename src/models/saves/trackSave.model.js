@@ -1,7 +1,7 @@
 import mongoose, { Schema } from "mongoose";
 
 const SavedTrackSchema = new Schema({
-    resource: {
+    track: {
         type: Schema.Types.ObjectId,
         ref: 'Track',
         required: true
@@ -15,7 +15,7 @@ const SavedTrackSchema = new Schema({
     timestamps: true
 })
 
-SavedTrackSchema.index({ resource: 1, savedBy: 1 }, { unique: true });
+SavedTrackSchema.index({ track: 1, savedBy: 1 }, { unique: true });
 const SavedTrack = mongoose.model('SavedTrack', SavedTrackSchema);
 
 export default SavedTrack;

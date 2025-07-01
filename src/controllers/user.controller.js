@@ -1,11 +1,15 @@
 import bcrypt from "bcrypt";
+import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
 import { deleteFromCloudinary } from "../services/cloudinary.services.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import Following from "../models/following.model.js"
-import mongoose from "mongoose";
 import { handleImageUploads } from "../utils/helper.js";
+import SavedTrack from "../models/saves/trackSave.model.js";
+import SavedPlaylist from "../models/saves/playlistSave.model.js";
+import { JWT_SECRET } from "../config/env.config.js";
+import validateMongoose from "../utils/ValidateMongoose.js";
 
 export const createUser = async (req, res, next) => {
     let coverArtId , backgroundId;
@@ -65,28 +69,45 @@ export const loginUser = async (req, res, next) => {
         throw new ApiError(404, 'Unregistered Email');
     }
 
-    const isMatch = await bcrypt.compare(body.password, user.password);
+    const isMatch = bcrypt.compare(body.password, user.password);
     if (!isMatch) {
         throw new ApiError('400', "Invalid Password");
     }
 
-    return res.status(200).json(new ApiResponse(200, 'Logged In Successfully', { id: user._id }));
+    const token = jwt.sign({ id: user._id }, JWT_SECRET, {
+        expiresIn: '30d',
+    });
+
+    return res.status(200).json(new ApiResponse(200, 'Logged In Successfully', { token }));
 
 }
 
 // get details of logged in user
 export const getUserDetails = async (req, res, next) => {
-    // jwt tokens configure garera garnu
+    const userId = req.user.id;
+
+    if (!validateMongoose(userId)) {
+        throw new ApiError(400, "Invalid User Id");
+    }
+
+    const user = await User.findById(userId).select('-password');
+
+    if (!user) {
+        throw new ApiError(400, "User not found");
+    }
+
+    res.status(200).json(new ApiResponse(200, "User Fetched Succesfully", user));
+
 }
 
 export const userDetails = async (req, res, next) => {
     const { userId } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
+    if (!validateMongoose(userId)) {
         throw new ApiError(404, 'Invalid Id');
     }
 
-    const user = await User.findById(userId).select('-password -subscription')
+    const user = await User.findById(userId).select('-password -email -location -dob -subscription').lean();
 
     if (!user) {
         throw new ApiError(404, 'User not found');
@@ -107,25 +128,52 @@ export const userDetails = async (req, res, next) => {
     }).lean();
     const followingsList = followings.map(item => item.receiver);
 
+    // get savedTracks
+    const savedTracks = await SavedTrack.find({ savedBy: userId }).select('track').populate({
+        path: 'track',
+        // match: {visibility: 'public'}, only when the owner of the account is sending this request
+        select: "_id name primaryArtist coverArt genre coverArt "
+    }).lean();
+
+    // get saved playlist
+    const savedPlaylist = await SavedPlaylist.find({ savedBy: userId }).select('track').populate({
+        path: 'playlist',
+        match: { visibility: 'public' },
+        select: '_id name primaryArtist coverArt genre coverArt type'
+    }).lean();
+
+
     res.status(200).json(new ApiResponse(200, 'User found', {
         ...user,
         followersCount: followersList.length ,
         followers: followersList,
         followingsCount: followingsList.length,
-        followings: followingsList
+        followings: followingsList,
+        savedTracks,
+        savedPlaylist,
     }))
 
 }
 
 export const getAllUsers = async (req, res, next) => {
-    const users = await User.find({}).select('-password -email');
-    res.status(200).json(new ApiResponse(200, 'All users fetched successfully', users));
+
+    let { role = 'all', limit = 10, page = 1 } = req.query;
+
+    limit = Math.max(5, parseInt(limit));
+    page = Math.max(1, parseInt(page));
+
+    let users;
+    const query = role === 'all' ? {} : { role };
+
+    users = await User.find(query).select('-password -email -location -dob -subscription').skip((page - 1) * limit).limit(limit);
+
+    res.status(200).json(new ApiResponse(200, `Fetched ${role === 'all' ? 'all users' : role + 's'} successfully`, users));
 }
 
 export const deleteUser = async (req, res, next) => {
     const { userId } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(userId)) {
+    if (!validateMongoose(userId)) {
         throw new ApiError(400, 'Invalid Id');
     }
     
@@ -146,4 +194,12 @@ export const deleteUser = async (req, res, next) => {
 
     res.status(200).json(new ApiResponse(200 , "User Deleted Successfully" , {id: deletedUser._id}))
 
+}
+
+export const updateUserById = async (req, res, next) => {
+    const { userId } = req.params;
+
+    if (!validateMongoose(userId)) {
+        throw new ApiError(400, "Invalid User ID");
+    }
 }

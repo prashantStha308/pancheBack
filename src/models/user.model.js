@@ -111,10 +111,6 @@ const UserSchema = new Schema({
         type: Schema.Types.ObjectId,
         ref: 'Track'
     }],
-    savedTracks: [{
-        type: Schema.Types.ObjectId,
-        ref: 'Track'
-    }],
     subscription:{
         type: String,
         trim: true,

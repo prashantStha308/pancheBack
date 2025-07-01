@@ -6,6 +6,7 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { handleImageUploads, reorderTracks } from "../utils/helper.js";
 import SavedPlaylist from "../models/saves/playlistSave.model.js";
+import validateMongoose from "../utils/ValidateMongoose.js";
 
 export const createPlaylist = async (req, res) => {
     let coverArtId;
@@ -97,19 +98,19 @@ export const getAllPlaylist = async (req, res, next) => {
 export const getPlaylistById = async (req, res, next) => {
     const { playlistId } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(playlistId)) {
+    if (!validateMongoose(playlistId)) {
         throw new ApiError(400, "Invalid Id");
     }
 
-    const playlist = await Playlist.findById(playlistId);
+    const playlist = await Playlist.findById(playlistId).lean();
     const saves = await SavedPlaylist.find({ resource: playlistId }).populate({
         path: 'savedBy',
         select: '_id username role profilePicture'
-    });
+    }).lean();
     const savedBy = saves.map(item => item.savedBy);
 
     res.status(200).json(new ApiResponse(200, "Fetched Playlist Successfully", {
-        ...playlist.toObject(),
+        ...playlist,
         savedBy,
         saveCount: savedBy.length
     }));
@@ -119,7 +120,7 @@ export const getPlaylistById = async (req, res, next) => {
 export const deletePlaylistById = async (req, res) => {
     const { playlistId } = req.params;
 
-    if (!mongoose.Types.ObjectId.isValid(playlistId)) {
+    if (!validateMongoose(playlistId)) {
         throw new ApiError(400, "Invalid Id");
     }
 

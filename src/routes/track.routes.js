@@ -12,5 +12,4 @@ trackRouter.post('/', upload.fields([
 
 trackRouter.get('/', getAllTracks);
 
-
 export default trackRouter;

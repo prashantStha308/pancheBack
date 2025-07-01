@@ -1,7 +1,7 @@
 import express from "express";
 import { createUser, deleteUser, getAllUsers, getUserDetails, loginUser, userDetails } from "../controllers/user.controller.js";
 import upload from "../config/multer.config.js";
-import { auth } from "../middleware/auth.js";
+import { authenticate } from "../middleware/authenticate.js";
 
 const userRouter = express.Router();
 
@@ -11,7 +11,7 @@ userRouter.post('/', upload.fields([
 ]) ,createUser);
 
 userRouter.post('/login', loginUser);
-userRouter.get('/me', auth , getUserDetails);
+userRouter.get('/me', authenticate , getUserDetails);
 
 userRouter.get('/:userId', userDetails);
 

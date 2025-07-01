@@ -69,7 +69,29 @@ const PlaylistSchema = new Schema({
     }
 }, {
     timestamps: true
-})
+});
+
+
+const updateArtists = async function (next){
+    if (!this.isModified('trackList')) {
+        return next();
+    }
+    try {
+        const tracks = await mongoose.model('Track').find({ _id: { $in: this.trackList } }, 'artists');
+
+        const allArtists = new Set();
+        for (const track of tracks) {
+            track.artists.forEach(artistId => allArtists.add(artistId.toString()));
+        }
+
+        this.artists = Array.from(allArtists);
+        next();
+    } catch (err) {
+        next(err);
+    }
+}
+
+PlaylistSchema.pre('save', updateArtists);
 
 const Playlist = mongoose.model('Playlist', PlaylistSchema);
 export default Playlist;

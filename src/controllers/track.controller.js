@@ -6,6 +6,8 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { parseBuffer } from "music-metadata";
 import SavedTrack from "../models/saves/trackSave.model.js";
 import { handleFilesUploads } from "../utils/helper.js";
+import Playlist from "../models/playlist.model.js";
+import validateMongoose from "../utils/ValidateMongoose.js";
 
 
 export const createTrack = async (req, res, next) => {
@@ -83,7 +85,7 @@ export const getAllTracks = async ( req ,res , next ) => {
 export const getTrackById = async (req, res, next) => {
     const { trackId } = req.query;
 
-    if (!mongoose.Types.ObjectId.isValid(trackId)) {
+    if (!validateMongoose(trackId)) {
         throw new ApiError(400, 'Invalid Track Id');
     }
 
@@ -102,6 +104,56 @@ export const getTrackById = async (req, res, next) => {
 
 }
 
-export const updateTrack = async (req, res, next) => {
-    const body = req.body;
+export const deleteTrackById = async (req, res, next) => {
+    let { trackId } = req.params;
+
+    if (!validateMongoose(trackId)) {
+        throw new ApiError(400, "Invalid track Id");
+    }
+
+    trackId = mongoose.Types.ObjectId(trackId);
+
+    const track = await Track.findByIdAndDelete(trackId);
+
+    // IF track is null, throw an error
+    if (!track) {
+        throw new ApiError(400, 'Track not found');
+    }
+    
+    // Delete datas from cloudinary
+    if (track.audio.publicId) {
+        await deleteFromCloudinary(track.audio.publicId, 'video');
+    }
+
+    if (track.coverArt.publicId) {
+        await deleteFromCloudinary(track.coverArt.publicId, 'image');
+    }
+
+    // update all playlist and users/artists
+
+    // Updates playlists
+    const playlistsHavingTrack = await Playlist.find({ trackList: trackId }).populate('trackList');
+
+    for (const playlist of playlistsHavingTrack) {
+        playlist.totalDuration = (playlist.totalDuration || 0) - (track.totalDuration || 0);
+        
+        const updatedTrackList = playlist.trackList.filter(track => track._id.equals(trackId) );
+        playlist.trackList = updatedTrackList;
+
+        // pre hook updates artist field while saving
+        await playlist.save();
+    }
+
+    // update all artists associated with this track
+    const artists = await User.find({ trackList: trackId, role: 'artist' });
+
+    for(const artist of artists) {
+        const updatedArtistTrackList = artist.trackList.filter(track => track !== trackId);
+        artist.trackList = updatedArtistTrackList;
+        await artist.save();
+    }
+}
+
+export const updateTrackById = async (req, res, next) => {
+    
 }
