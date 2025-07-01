@@ -61,6 +61,7 @@ export const createUser = async (req, res, next) => {
 
 export const loginUser = async (req, res, next) => {
     const body = req.body;
+    console.log(body);
 
     const email = body.email;
     const user = await User.findOne({ email });
@@ -90,31 +91,11 @@ export const getUserDetails = async (req, res, next) => {
         throw new ApiError(400, "Invalid User Id");
     }
 
-    const user = await User.findById(userId).select('-password');
-
+    const user = await User.findById(userId).select('-password').lean();
     if (!user) {
         throw new ApiError(400, "User not found");
     }
-
-    res.status(200).json(new ApiResponse(200, "User Fetched Succesfully", user));
-
-}
-
-export const userDetails = async (req, res, next) => {
-    const { userId } = req.params;
-
-    if (!validateMongoose(userId)) {
-        throw new ApiError(404, 'Invalid Id');
-    }
-
-    const user = await User.findById(userId).select('-password -email -location -dob -subscription').lean();
-
-    if (!user) {
-        throw new ApiError(404, 'User not found');
-    }
-
     // get followers
-    // populate garnu parne xa
     const followers = await Following.find({ receiver: userId }).select('sender').populate({
         path: 'sender',
         select: '_id username role profilePicture'
@@ -131,19 +112,15 @@ export const userDetails = async (req, res, next) => {
     // get savedTracks
     const savedTracks = await SavedTrack.find({ savedBy: userId }).select('track').populate({
         path: 'track',
-        // match: {visibility: 'public'}, only when the owner of the account is sending this request
         select: "_id name primaryArtist coverArt genre coverArt "
     }).lean();
-
-    // get saved playlist
-    const savedPlaylist = await SavedPlaylist.find({ savedBy: userId }).select('track').populate({
+    const savedPlaylist = await SavedPlaylist.find({ savedBy: userId }).select('playlist').populate({
         path: 'playlist',
-        match: { visibility: 'public' },
-        select: '_id name primaryArtist coverArt genre coverArt type'
+        math: { type: 'playlist' },
+        select: "_id name type createdBy primaryArtist coverArt"
     }).lean();
 
-
-    res.status(200).json(new ApiResponse(200, 'User found', {
+    res.status(200).json(new ApiResponse(200, "User Fetched Succesfully", {
         ...user,
         followersCount: followersList.length ,
         followers: followersList,
@@ -151,6 +128,43 @@ export const userDetails = async (req, res, next) => {
         followings: followingsList,
         savedTracks,
         savedPlaylist,
+    }));
+
+}
+// user detail sby ID
+export const userDetails = async (req, res, next) => {
+    const { userId } = req.params;
+
+    if (!validateMongoose(userId)) {
+        throw new ApiError(404, 'Invalid Id');
+    }
+
+    const user = await User.findById(userId).select('-password -email -location -dob -subscription').lean();
+
+    if (!user) {
+        throw new ApiError(404, 'User not found');
+    }
+
+    // get followers
+    const followers = await Following.find({ receiver: userId }).select('sender').populate({
+        path: 'sender',
+        select: '_id username role profilePicture'
+    }).lean();
+    const followersList = followers.map(item => item.sender);
+
+    // get followings
+    const followings = await Following.find({ sender: userId }).select('receiver').populate({
+        path: 'receiver',
+        select: '_id username role profilePicture'
+    }).lean();
+    const followingsList = followings.map(item => item.receiver);
+
+
+    res.status(200).json(new ApiResponse(200, 'User found', {
+        ...user,
+        followersCount: followersList.length ,
+        followers: followersList,
+        followingsCount: followingsList.length,
     }))
 
 }
@@ -165,7 +179,7 @@ export const getAllUsers = async (req, res, next) => {
     let users;
     const query = role === 'all' ? {} : { role };
 
-    users = await User.find(query).select('-password -email -location -dob -subscription').skip((page - 1) * limit).limit(limit);
+    users = await User.find(query).select('-password -location -dob -subscription').skip((page - 1) * limit).limit(limit);
 
     res.status(200).json(new ApiResponse(200, `Fetched ${role === 'all' ? 'all users' : role + 's'} successfully`, users));
 }

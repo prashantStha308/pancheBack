@@ -10,10 +10,6 @@ const isExistingSave = async (playlistId, userId) => {
     return save;
 }
 
-const removeSave = async (playlistId , userId) => {
-    await SavedPlaylist.findOneAndDelete({ playlist: playlistId, savedBy: userId });
-}
-
 export const togglePlaylistSave = async (req, res, next) => {
     const userId = req.user.id;
     const { playlistId } = req.params;
@@ -28,8 +24,8 @@ export const togglePlaylistSave = async (req, res, next) => {
 
     const save = await isExistingSave(playlistId, userId);
     if (save) {
-        await removeSave(playlistId, userId);
-        res.status(200).json(new ApiResponse(200, 'Removed playlist from saved'));
+        await SavedPlaylist.findOneAndDelete({ playlist: playlistId, savedBy: userId });
+        return res.status(200).json(new ApiResponse(200, 'Removed playlist from saved'));
     }
 
     const savedItem = await SavedPlaylist.create({
@@ -69,7 +65,7 @@ export const getAllPlaylistSaves = async (req, res, next) => {
 
     const totalSaveCount = await SavedPlaylist.countDocuments({ savedBy: userId });
 
-    res.status(200).json(new ApiResponse(200, `Fetched ${limit} saves from page ${page}`, {
+    res.status(200).json(new ApiResponse(200, `Fetched ${saves.length} saves from page ${page}`, {
         ...saves,
         page,
         limit,

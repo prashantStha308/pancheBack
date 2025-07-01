@@ -1,10 +1,10 @@
 import express from "express";
 import { getAlltrackSaves, toggletrackSave } from "../../controllers/saves/trackSave.controller.js";
-import { authenticate } from "../../middleware/authenticate.js";
+import { authorize } from "../../middleware/authorize.js";
 
 const trackSaveRouter = express.Router();
 
-trackSaveRouter.post('/:trackId', authenticate ,toggletrackSave);
-trackSaveRouter.get('/', authenticate , getAlltrackSaves);
+trackSaveRouter.post('/:trackId', authorize ,toggletrackSave);
+trackSaveRouter.get('/', authorize , getAlltrackSaves);
 
 export default trackSaveRouter;
