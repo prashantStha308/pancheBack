@@ -4,9 +4,8 @@ import Track from "../models/track.model.js";
 import { deleteFromCloudinary } from "../services/cloudinary.services.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { handleImageUploads, reorderTracks } from "../utils/helper.js";
+import { handleImageUploads, reorderTracks , validateMongoose } from "../utils/helper.js";
 import SavedPlaylist from "../models/saves/playlistSave.model.js";
-import validateMongoose from "../utils/ValidateMongoose.js";
 
 export const createPlaylist = async (req, res) => {
     let coverArtId;

@@ -4,12 +4,8 @@ import User from "../models/user.model.js";
 import { deleteFromCloudinary } from "../services/cloudinary.services.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import Following from "../models/following.model.js"
-import { handleImageUploads } from "../utils/helper.js";
-import SavedTrack from "../models/saves/trackSave.model.js";
-import SavedPlaylist from "../models/saves/playlistSave.model.js";
+import { handleImageUploads , validateMongoose , getFollowers , getFollowings , getSavedTracks , getSavedPlaylist } from "../utils/helper.js";
 import { JWT_SECRET } from "../config/env.config.js";
-import validateMongoose from "../utils/ValidateMongoose.js";
 
 export const createUser = async (req, res, next) => {
     let coverArtId , backgroundId;
@@ -95,37 +91,18 @@ export const getUserDetails = async (req, res, next) => {
     if (!user) {
         throw new ApiError(400, "User not found");
     }
-    // get followers
-    const followers = await Following.find({ receiver: userId }).select('sender').populate({
-        path: 'sender',
-        select: '_id username role profilePicture'
-    }).lean();
-    const followersList = followers.map(item => item.sender);
-
-    // get followings
-    const followings = await Following.find({ sender: userId }).select('receiver').populate({
-        path: 'receiver',
-        select: '_id username role profilePicture'
-    }).lean();
-    const followingsList = followings.map(item => item.receiver);
-
-    // get savedTracks
-    const savedTracks = await SavedTrack.find({ savedBy: userId }).select('track').populate({
-        path: 'track',
-        select: "_id name primaryArtist coverArt genre coverArt "
-    }).lean();
-    const savedPlaylist = await SavedPlaylist.find({ savedBy: userId }).select('playlist').populate({
-        path: 'playlist',
-        math: { type: 'playlist' },
-        select: "_id name type createdBy primaryArtist coverArt"
-    }).lean();
+    const followers = await getFollowers(userId);
+    const followings = await getFollowings(userId);
+    const savedTracks = await getSavedTracks(userId);
+    const savedPlaylist = await getSavedPlaylist(userId);
+    // purano baasna ankita pun
 
     res.status(200).json(new ApiResponse(200, "User Fetched Succesfully", {
         ...user,
-        followersCount: followersList.length ,
-        followers: followersList,
-        followingsCount: followingsList.length,
-        followings: followingsList,
+        followersCount: followers.length ,
+        followers,
+        followingsCount: followings.length,
+        followings,
         savedTracks,
         savedPlaylist,
     }));
@@ -145,26 +122,14 @@ export const userDetails = async (req, res, next) => {
         throw new ApiError(404, 'User not found');
     }
 
-    // get followers
-    const followers = await Following.find({ receiver: userId }).select('sender').populate({
-        path: 'sender',
-        select: '_id username role profilePicture'
-    }).lean();
-    const followersList = followers.map(item => item.sender);
-
-    // get followings
-    const followings = await Following.find({ sender: userId }).select('receiver').populate({
-        path: 'receiver',
-        select: '_id username role profilePicture'
-    }).lean();
-    const followingsList = followings.map(item => item.receiver);
-
+    const followers = await getFollowers(userId);
+    const followings = await getFollowings(userId);
 
     res.status(200).json(new ApiResponse(200, 'User found', {
         ...user,
-        followersCount: followersList.length ,
-        followers: followersList,
-        followingsCount: followingsList.length,
+        followersCount: followers.length ,
+        followers,
+        followingsCount: followings.length,
     }))
 
 }

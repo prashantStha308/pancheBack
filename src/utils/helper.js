@@ -1,7 +1,13 @@
 import mongoose from "mongoose";
-import Track from "../models/track.model.js";
 import { uploadToCloudinary } from "../services/cloudinary.services.js";
 import { ApiError } from "./ApiError.js";
+
+// Models
+import SavedTrack from "../models/saves/trackSave.model.js";
+import SavedPlaylist from "../models/saves/playlistSave.model.js";
+import Following from "../models/following.model.js"
+import Track from "../models/track.model.js";
+import Playlist from "../models/playlist.model.js";
 
 export const handleFilesUploads = async ( files ) => {
     if (!files.coverArt) { return next(new ApiError(400, 'Missing coverArt')) };
@@ -72,4 +78,63 @@ export const reorderTracks = async (trackList) => {
     const reorderedTrackList = trackList.map(id => trackCopy[id.toString()]);
 
     return reorderedTrackList;
+}
+
+export const validateMongoose = (id) => {
+    return mongoose.Types.ObjectId.isValid(id);
+}
+
+export const getFollowers = async (userId) => {
+    return await Following.find({ receiver: userId }).select('sender').populate({
+        path: 'sender',
+        select: '_id username role profilePicture'
+    }).lean();
+}
+
+export const getFollowings = async (userId) => {
+    return await Following.find({ sender: userId }).select('receiver').populate({
+        path: 'receiver',
+        select: '_id username role profilePicture'
+    }).lean();
+}
+
+export const getSavedTracks = async (userId) => {
+    return await SavedTrack.find({ savedBy: userId }).select('track').populate({
+        path: 'track',
+        select: "_id name primaryArtist coverArt genre coverArt "
+    }).lean();
+}
+
+export const getSavedPlaylist = async (userId) => {
+    await SavedPlaylist.find({ savedBy: userId }).select('playlist').populate({
+        path: 'playlist',
+        math: { type: 'playlist' },
+        select: "_id name type createdBy primaryArtist coverArt"
+    }).lean();
+}
+
+export const sortData = async (model , sortBy , page , limit) => {
+    const sortByOptions = ["playCount", "durationPlayed","-playCount", "-durationPlayed"  ];
+
+    if (!sortByOptions.includes(sortBy)) {
+        throw new ApiError(400 , "Invalid sortBy query Input");
+    }
+
+    return await model.find({}).skip((page - 1) * limit).limit(limit).sort(sortBy).populate({
+        path: 'primaryArtist',
+        select: 'username , profilePicture , bio , followerCount'
+    }). populate({
+        path: 'artists',
+        select: 'username , profilePicture , bio , followerCount'
+    });;
+}
+
+export const allTracks = async ( page , limit ) => {
+    return await Track.find({}).skip((page - 1) * limit).limit(limit).populate({
+        path: 'primaryArtist',
+        select: 'username , profilePicture , bio , followerCount'
+    }). populate({
+        path: 'artists',
+        select: 'username , profilePicture , bio , followerCount'
+    });
 }

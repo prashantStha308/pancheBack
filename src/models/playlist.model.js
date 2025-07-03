@@ -66,6 +66,14 @@ const PlaylistSchema = new Schema({
     totalDuration: {
         type: Number,
         default: 0
+    },
+    durationPlayed: {
+        type: Number,
+        default: 0
+    },
+    playCount: {
+        type: Number,
+        deafult: 0
     }
 }, {
     timestamps: true

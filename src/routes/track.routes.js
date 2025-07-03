@@ -1,6 +1,6 @@
 import express from "express";
 import upload from "../config/multer.config.js";
-import { createTrack, getAllTracks } from "../controllers/track.controller.js";
+import { createTrack, getAllTracks , getTrackById , deleteTrackById , updateTrackById } from "../controllers/track.controller.js";
 
 const trackRouter = express.Router();
 
@@ -11,5 +11,9 @@ trackRouter.post('/', upload.fields([
 ]), createTrack);
 
 trackRouter.get('/', getAllTracks);
+trackRouter.get('/:trackId', getTrackById);
+
+trackRouter.patch('/:trackId', upload.single('profilePicture'), updateTrackById);
+trackRouter.delete('/:trackId', deleteTrackById);
 
 export default trackRouter;

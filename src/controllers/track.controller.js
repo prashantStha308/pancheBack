@@ -5,9 +5,8 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { parseBuffer } from "music-metadata";
 import SavedTrack from "../models/saves/trackSave.model.js";
-import { handleFilesUploads } from "../utils/helper.js";
+import { allTracks, handleFilesUploads , sortData, validateMongoose } from "../utils/helper.js";
 import Playlist from "../models/playlist.model.js";
-import validateMongoose from "../utils/ValidateMongoose.js";
 
 
 export const createTrack = async (req, res, next) => {
@@ -63,17 +62,11 @@ export const createTrack = async (req, res, next) => {
 
 export const getAllTracks = async ( req ,res , next ) => {
     try {
-        let { page = 1, limit = 5 } = req.query;
+        let { page = 1, limit = 5 , sort } = req.query;
         page = Math.max(1, parseInt(page));
         limit = Math.max(1, parseInt(limit));
 
-        const trackRes = await Track.find({}).skip((page - 1) * limit).limit(limit).populate({
-            path: 'primaryArtist',
-            select: 'username , profilePicture , bio , followerCount'
-        }). populate({
-            path: 'artists',
-            select: 'username , profilePicture , bio , followerCount'
-        });
+        const trackRes = sort ? await sortData(Track, sort, page, limit) : await allTracks(page, limit);
 
         return res.status(200).json(new ApiResponse(200, 'Successfully fetched tracks', trackRes));
 
@@ -144,6 +137,9 @@ export const deleteTrackById = async (req, res, next) => {
         await playlist.save();
     }
 
+    // remove all saves associated with this trackID
+    await SavedTrack.deleteMany({ track: trackId });
+
     // update all artists associated with this track
     const artists = await User.find({ trackList: trackId, role: 'artist' });
 
@@ -152,8 +148,57 @@ export const deleteTrackById = async (req, res, next) => {
         artist.trackList = updatedArtistTrackList;
         await artist.save();
     }
+
+    res.status(200).json(new ApiResponse(200, "Deleted Track Successfully", { id: trackId }));
 }
 
 export const updateTrackById = async (req, res, next) => {
-    
+    const { trackId } = req.params;
+    const {
+        name,
+        artists,
+        playCount,
+        visibility,
+        genre,
+        durationPlayed,
+    } = req.body;
+    const imageFile = req.file;
+
+    const track = await Track.findById(trackId);
+    if (!track) {
+    return res.status(404).json({ message: 'track not found' });
+    }
+
+    try {
+        if (name) track.name = name;
+        if (artists && Array.isArray(artists)) track.artists = artists;
+        if (playCount) track.playCount = playCount;
+        if (visibility) track.visibility = visibility;
+        if (genre && Array.isArray(genre)) track.genre = genre;
+        if (durationPlayed) track.durationPlayed = durationPlayed;
+
+        if (imageFile) {
+            const imgRes = await uploadToCloudinary(imageFile.buffer, 'image', 'image');
+            if (track.coverArt.publicId) {
+                await deleteFromCloudinary(track.coverArt.publicId , 'image');
+            }
+            track.coverArt.src = imgRes.secure_url;
+            track.coverArt.publicId = imgRes.public_id;
+        }
+
+        await track.save();
+        res.json({ data: track });
+    } catch (err) {
+        if (err instanceof mongoose.Error.ValidationError) {
+            // Format errors for the frontend
+            const errors = {};
+            for (let field in err.errors) {
+            errors[field] = {
+                message: err.errors[field].message
+            };
+            }
+            return res.status(400).json({ errors });
+        }
+        next(err);
+    }
 }

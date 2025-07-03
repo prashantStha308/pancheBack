@@ -15,5 +15,7 @@ const FollowingSchema = new Schema({
     timestamps: true
 })
 
+FollowingSchema.index({ sender: 1, receiver: 1 }, { unique: true });
+
 const Following = mongoose.model('Following', FollowingSchema);
 export default Following;

@@ -1,8 +1,7 @@
-import mongoose from "mongoose";
 import SavedPlaylist from "../../models/saves/playlistSave.model.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { ApiError } from "../../utils/ApiError.js";
-import validateMongoose from "../../utils/ValidateMongoose.js";
+import { validateMongoose } from "../../utils/helper.js";
 
 const isExistingSave = async (playlistId, userId) => {
     const save = await SavedPlaylist.findOne({ playlist: playlistId, savedBy: userId });
