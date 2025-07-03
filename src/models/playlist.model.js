@@ -63,6 +63,9 @@ const PlaylistSchema = new Schema({
         },
         default: 'public'
     },
+    genre: [{
+        type: String
+    }],
     totalDuration: {
         type: Number,
         default: 0
@@ -80,26 +83,39 @@ const PlaylistSchema = new Schema({
 });
 
 
-const updateArtists = async function (next){
+const updatePlaylist = async function (next){
     if (!this.isModified('trackList')) {
         return next();
     }
     try {
-        const tracks = await mongoose.model('Track').find({ _id: { $in: this.trackList } }, 'artists');
+        const tracks = await mongoose.model('Track').find({ _id: { $in: this.trackList } }, 'artists genre');
 
         const allArtists = new Set();
+        const allGenre = new Set();
         for (const track of tracks) {
-            track.artists.forEach(artistId => allArtists.add(artistId.toString()));
+            track.artists.forEach(artistId => {
+                allArtists.add(artistId);
+            });
+
+            track.genre.forEach((genre) => {
+                allGenre.add(genre);
+            })
         }
 
+        const updatedDuration = tracks.reduce((sum, track) => {
+            return sum + track.totalDuration;
+        }, 0);
+        
+        this.totalDuration = updatedDuration;
         this.artists = Array.from(allArtists);
+        this.genre = Array.from(allGenre);
         next();
     } catch (err) {
         next(err);
     }
 }
 
-PlaylistSchema.pre('save', updateArtists);
+PlaylistSchema.pre('save', updatePlaylist);
 
 const Playlist = mongoose.model('Playlist', PlaylistSchema);
 export default Playlist;

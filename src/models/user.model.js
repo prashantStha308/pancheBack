@@ -59,6 +59,20 @@ const UserSchema = new Schema({
             default: ""
         }
     },
+    coverArt: {
+        src:{
+            type: String,
+            default: "https://res.cloudinary.com/dww0antkw/image/upload/v1747984790/deafultImg_woxk8f.png",
+            validate: {
+                validator: validator.isURL,
+                message:  urlError('user.coverArt.src')
+            }
+        },
+        publicId:{
+            type: String,
+            default: ""
+        }
+    },
     bio: {
         type: String,
         deafult: "User hasn't yet added a bio",
@@ -102,15 +116,6 @@ const UserSchema = new Schema({
             message: 'You must be at least 13 years old',
         },
     },
-    // you can make seperate model for saved tracks, tracklists , playlists haru, same for saves
-    playlists: [{
-        type: Schema.Types.ObjectId,
-        ref: 'Playlist'
-    }],
-    trackList: [{
-        type: Schema.Types.ObjectId,
-        ref: 'Track'
-    }],
     subscription:{
         type: String,
         trim: true,

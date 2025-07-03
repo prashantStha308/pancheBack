@@ -1,19 +1,19 @@
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
 import User from "../models/user.model.js";
-import { deleteFromCloudinary } from "../services/cloudinary.services.js";
+import { deleteFromCloudinary, uploadToCloudinary } from "../services/cloudinary.services.js";
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { handleImageUploads , validateMongoose , getFollowers , getFollowings , getSavedTracks , getSavedPlaylist } from "../utils/helper.js";
+import { handleImageUploads , validateMongoose , getFollowers , getFollowings , getSavedTracks , getSavedPlaylist, getCreatedPlaylist, getCreatedTracks } from "../utils/helper.js";
 import { JWT_SECRET } from "../config/env.config.js";
 
 export const createUser = async (req, res, next) => {
-    let coverArtId , backgroundId;
+    let profilePictureId , coverArtId;
     try {
         const body = req.body;
-        const location = JSON.parse(body.location);
+        const files = req.files;
 
-        if (!body.username || !body.fullName || !body.email || !body.password || !body.role || !location ) {
+        if (!body.username || !body.fullName || !body.email || !body.password || !body.role || !body.location ) {
             throw new ApiError(400, 'Required Feilds not filled');
         }
         // Check if the user already exists
@@ -25,14 +25,27 @@ export const createUser = async (req, res, next) => {
 
         const hashedPassword = await bcrypt.hash(body.password, 10);
 
-        const { coverArt, backgroundArt } = await handleImageUploads(req.files);
-        coverArtId = coverArt.publicId;
-        backgroundId = backgroundArt.publicId !== coverArt.publicId ? backgroundArt.publicId : null;
+        let profilePicture = {
+            src: "https://res.cloudinary.com/dww0antkw/image/upload/v1747984790/deafultImg_woxk8f.png",
+            publicId: ""
+        }
+
+        let coverArt = { ...profilePicture };
+
+        if (files.profilePicture) {
+            profilePicture = await handleImageUploads(files.profilePicture);
+            profilePictureId = profilePicture.publicId;
+        }
+
+        if (files.coverArt) {
+            coverArt = await handleImageUploads(files.profilePicture);
+            coverArtId = coverArt.publicId;
+        }
         
         const user = await User.create({
             ...body,
-            location,
             password: hashedPassword,
+            profilePicture,
             coverArt,
             backgroundArt,
         })
@@ -44,8 +57,8 @@ export const createUser = async (req, res, next) => {
         return res.status(201).json(new ApiResponse(200, 'User Created Successfully', { id: user._id }));
 
     } catch (error) {
-        if (backgroundId) {
-            await deleteFromCloudinary(backgroundId, 'image', 'image');
+        if (profilePictureId) {
+            await deleteFromCloudinary(profilePictureId, 'image', 'image');
         }
         if (coverArtId) {
             await deleteFromCloudinary(coverArtId, 'image', 'image');
@@ -57,7 +70,6 @@ export const createUser = async (req, res, next) => {
 
 export const loginUser = async (req, res, next) => {
     const body = req.body;
-    console.log(body);
 
     const email = body.email;
     const user = await User.findOne({ email });
@@ -95,7 +107,11 @@ export const getUserDetails = async (req, res, next) => {
     const followings = await getFollowings(userId);
     const savedTracks = await getSavedTracks(userId);
     const savedPlaylist = await getSavedPlaylist(userId);
-    // purano baasna ankita pun
+
+    const createdPlaylists = await getCreatedPlaylist(userId);
+    
+    let createdTracks
+    if (user.role === 'artist') createdTracks = await getCreatedTracks(userId);
 
     res.status(200).json(new ApiResponse(200, "User Fetched Succesfully", {
         ...user,
@@ -105,11 +121,13 @@ export const getUserDetails = async (req, res, next) => {
         followings,
         savedTracks,
         savedPlaylist,
+        createdPlaylists,
+        createdTracks
     }));
 
 }
-// user detail sby ID
-export const userDetails = async (req, res, next) => {
+// user detail by ID
+export const userDetailsById = async (req, res, next) => {
     const { userId } = req.params;
 
     if (!validateMongoose(userId)) {
@@ -136,21 +154,23 @@ export const userDetails = async (req, res, next) => {
 
 export const getAllUsers = async (req, res, next) => {
 
-    let { role = 'all', limit = 10, page = 1 } = req.query;
+    let { limit = 10, page = 1 } = req.query;
 
     limit = Math.max(5, parseInt(limit));
     page = Math.max(1, parseInt(page));
 
-    let users;
-    const query = role === 'all' ? {} : { role };
 
-    users = await User.find(query).select('-password -location -dob -subscription').skip((page - 1) * limit).limit(limit);
+    const users = await User.find({role: 'user'}).select('-password -location -dob -subscription -trackList -playLists').skip((page - 1) * limit).limit(limit);
 
-    res.status(200).json(new ApiResponse(200, `Fetched ${role === 'all' ? 'all users' : role + 's'} successfully`, users));
+    res.status(200).json(new ApiResponse(200, "Fetched Users successfully", users));
 }
 
 export const deleteUser = async (req, res, next) => {
-    const { userId } = req.params;
+    const userId = req.user.id;
+
+    if (!userId) {
+        throw new ApiError(401, "PLease authorize with a valid userId");
+    }
 
     if (!validateMongoose(userId)) {
         throw new ApiError(400, 'Invalid Id');
@@ -158,7 +178,7 @@ export const deleteUser = async (req, res, next) => {
     
     const user = await User.findById(userId);
     if (!user) {
-        throw new ApiError(400, 'User not found');
+        throw new ApiError(404, 'User not found');
     }
 
     if (user.profilePicture.publicId) {
@@ -175,10 +195,69 @@ export const deleteUser = async (req, res, next) => {
 
 }
 
-export const updateUserById = async (req, res, next) => {
-    const { userId } = req.params;
+export const updateUser = async (req, res, next) => {
+    let profilePictureId, coverArtId;
+    try {
+        const userId = req.user.id;
+        const {
+            username,
+            fullName,
+            email,
+            role,
+            password
+        } = req.body;
+        const files = req.files;
 
-    if (!validateMongoose(userId)) {
-        throw new ApiError(400, "Invalid User ID");
+        if (!validateMongoose(userId)) {
+            throw new ApiError(400, "Invalid User ID");
+        }
+
+        const user = await User.findById(userId);
+
+        if (!user) {
+            throw new ApiError(404, "User not found");
+        }
+
+        if (username) user.username = username;
+        if (fullName) user.fullName = fullName;
+        if (email) user.email = email;
+        if (role) user.role = role;
+        if (password) user.password = await bcrypt.hash(password, 10);
+
+        // update profilePicture if available
+        if (files?.profilePicture) {
+            const imgRes = await uploadToCloudinary(files.profilePicture[0].buffer, 'image', 'image');
+            if (user.profilePicture.publicId) {
+                await deleteFromCloudinary(user.profilePicture.publicId, 'image');
+            }
+            profilePictureId = imgRes.public_id;
+            user.profilePicture.src = imgRes.secure_url;
+            user.profilePicture.publicId = imgRes.public_id;
+        }
+
+        // update coverArt if available
+        if (files?.coverArt) {
+            const imgRes = await uploadToCloudinary(files.coverArt[0].buffer, 'image', 'image');
+            if (user.coverArt.publicId) {
+                await deleteFromCloudinary(user.coverArt.publicId, 'image');
+            }
+            coverArtId = imgRes.public_id;
+            user.coverArt.src = imgRes.secure_url;
+            user.coverArt.publicId = imgRes.public_id;
+        }
+
+        await user.save();
+        
+        res.status(200).json(new ApiResponse(200, "User updated successfully", { id: userId }));
+
+    } catch (error) {
+        if (profilePictureId) {
+            await deleteFromCloudinary(profilePictureId, 'image');
+        }
+
+        if (coverArtId) {
+            await deleteFromCloudinary(coverArtId, 'image');
+        }
+        next(error);
     }
 }

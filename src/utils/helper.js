@@ -26,40 +26,18 @@ export const handleFilesUploads = async ( files ) => {
         src: imgRes.secure_url,
         publicId:  imgRes.public_id
     };
-    // Template for backgroundArt Object
-    let backgroundArt = {
-        src: "",
-        publicId: null
-    }
-
-    if (files.backgroundArt) { //upload image if backgroundFile is provided
-        const bgRes = await uploadToCloudinary(files.backgroundArt[0].buffer, 'image', 'image');
-        backgroundArt.src = bgRes.secure_url;
-        backgroundArt.publicId = bgRes.public_id;
-        bgId = bgRes.public_id;
-    } else { //else backgroundArt is same as coverArt
-        backgroundArt = {...coverArt};
-    }
     
     return { audio , coverArt , backgroundArt }
 }
 
 export const handleImageUploads = async (file) => {
 
-    let coverArt = {
-        src: "https://res.cloudinary.com/dww0antkw/image/upload/v1747984790/deafultImg_woxk8f.png",
-        publicId: ""
-    };
-
-    if (file) {
-        const imgRes = await uploadToCloudinary(file[0].buffer, 'image', 'image');
-        coverArt = {
-            src: imgRes.secure_url,
-            publicId:  imgRes.public_id
-        };
-    }
-    
-    return coverArt;
+    const imgRes = await uploadToCloudinary(file[0].buffer, 'image', 'image');
+    img = {
+        src: imgRes.secure_url,
+        publicId:  imgRes.public_id
+    };    
+    return img;
 }
 
 export const reorderTracks = async (trackList) => {
@@ -105,11 +83,22 @@ export const getSavedTracks = async (userId) => {
     }).lean();
 }
 
+export const getCreatedTracks = async (userId) => {
+    return await Track.find({ artists: userId }).lean();
+}
+
 export const getSavedPlaylist = async (userId) => {
-    await SavedPlaylist.find({ savedBy: userId }).select('playlist').populate({
+    return await SavedPlaylist.find({ savedBy: userId }).select('playlist').populate({
         path: 'playlist',
         math: { type: 'playlist' },
         select: "_id name type createdBy primaryArtist coverArt"
+    }).lean();
+}
+
+export const getCreatedPlaylist = async (userId) => {
+    return await Playlist.find({ createdBy: userId }).populate({
+        path: 'artists',
+        select: '_id username role profilePicture'
     }).lean();
 }
 

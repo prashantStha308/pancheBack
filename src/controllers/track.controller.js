@@ -5,29 +5,42 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { parseBuffer } from "music-metadata";
 import SavedTrack from "../models/saves/trackSave.model.js";
+import User from "../models/user.model.js";
 import { allTracks, handleFilesUploads , sortData, validateMongoose } from "../utils/helper.js";
 import Playlist from "../models/playlist.model.js";
 
 
 export const createTrack = async (req, res, next) => {
-    let audioId, coverId, bgId;
+    const userId = req.user.id;
+    let audioId, coverId;
+    if (!userId) {
+        throw new ApiError(401, "userId must be present");
+    }
     try {
-        const { name , primaryArtist , visibility , artists=[] , genre=[] } = req.body;
 
-        if (!name || !primaryArtist || !visibility) {
+        const user = await User.findById(userId).select('role');
+        if (!user) {
+            throw new ApiError(404, "Invalid user");
+        }
+        if (user.role !== 'artist') {
+            throw new ApiError(401, "User must be an artist to create a track");
+        }
+
+        const { name , visibility , artists=[] , genre=[] } = req.body;
+
+        if (!name || !visibility) {
             throw new ApiError(400, 'Required fields not submitted');
         }
 
-        // if artists is not passed by client, by make it an array containing only primaryArtist
-        if (!Array.isArray(artists) || artists.length === 0) {
-            artists = [primaryArtist];
+        // if artists is not passed by client, make it an array containing only primaryArtist
+        if (!Array.isArray(artists) && artists.length === 0) {
+            artists = [userId];
         }
 
-        const { audio, coverArt, backgroundArt } = await handleFilesUploads(req.files);
+        const { audio, coverArt } = await handleFilesUploads(req.files);
 
         audioId = audio.publicId;
         coverId = coverArt.publicId;
-        bgId = backgroundArt.publicId !== coverArt.publicId ? backgroundArt.publicId : null;
 
         const musicMetadata = await parseBuffer(req.files.track[0].buffer, 'audio/mpeg');
         const totalDuration = musicMetadata.format.duration;
@@ -37,7 +50,6 @@ export const createTrack = async (req, res, next) => {
             primaryArtist,
             artists,
             coverArt,
-            backgroundArt,
             audio,
             visibility,
             totalDuration,
@@ -54,7 +66,6 @@ export const createTrack = async (req, res, next) => {
 
         if (audioId) await deleteFromCloudinary(audioId, 'video');
         if (coverId) await deleteFromCloudinary(coverId, 'image');
-        if (bgId) await deleteFromCloudinary(bgId, 'image');
 
         return next(new ApiError(500, error.message));
     }
@@ -153,29 +164,34 @@ export const deleteTrackById = async (req, res, next) => {
 }
 
 export const updateTrackById = async (req, res, next) => {
+    const userId = req.user.id;
     const { trackId } = req.params;
     const {
         name,
         artists,
-        playCount,
         visibility,
         genre,
-        durationPlayed,
     } = req.body;
     const imageFile = req.file;
 
-    const track = await Track.findById(trackId);
-    if (!track) {
-    return res.status(404).json({ message: 'track not found' });
+    if (!userId) {
+        throw new ApiError(401, "userId must be present");
     }
 
     try {
+        const track = await Track.findById(trackId);
+        if (!track) {
+        return res.status(404).json({ message: 'Track not found' });
+        }
+
+        if (track.primaryArtist !== userId) {
+            throw new ApiError(401, "Track can only be updated by the primaryArtist");
+        }
+
         if (name) track.name = name;
         if (artists && Array.isArray(artists)) track.artists = artists;
-        if (playCount) track.playCount = playCount;
         if (visibility) track.visibility = visibility;
         if (genre && Array.isArray(genre)) track.genre = genre;
-        if (durationPlayed) track.durationPlayed = durationPlayed;
 
         if (imageFile) {
             const imgRes = await uploadToCloudinary(imageFile.buffer, 'image', 'image');
@@ -201,4 +217,26 @@ export const updateTrackById = async (req, res, next) => {
         }
         next(err);
     }
+}
+
+export const updatePlayCount = async (req, res) => {
+    const userId = req.user.id;
+    const { trackId } = req.params;
+
+    if (!userId) {
+        throw new ApiError(401, "Must have a valid userId");
+    }
+
+    if (!validateMongoose(playlistId)) {
+        throw new ApiError(400, "Invalid playlist id");
+    }
+    const track = await Track.findById(trackId);
+    if (!track) {
+        throw new ApiError(404, "Track not found");
+    }
+
+    track.playCount++;
+    await track.save();
+
+    res.status(200).json(new ApiResponse(200, "playcount++"));
 }
