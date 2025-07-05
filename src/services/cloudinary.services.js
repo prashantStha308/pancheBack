@@ -10,6 +10,7 @@ export const uploadToCloudinary = (fileBuffer, folder, resourceType = 'auto') =>
         const uploadStream = cloudinary.uploader.upload_stream(
             {
                 folder: folder,
+                type: 'private',
                 resource_type: resourceType
             },
             (error, res) => {
@@ -33,4 +34,23 @@ export const deleteFromCloudinary = async ( publicId , resourceType ) => {
         console.log(error.message);
         return false;
     }
+}
+
+export const buildCloudinaryUrl = (publicId, expiryTime) => {
+
+    if (!publicId) {
+        console.error("No publicId set");
+        return null;
+    }
+
+    publicId = "track/" + publicId;
+
+    return cloudinary.url( publicId, {
+        resource_type: 'video',
+        type: 'upload',
+        sign_url: true,
+        // auth_token: {
+        //     duration: expiryTime || 3600
+        // }
+    })
 }

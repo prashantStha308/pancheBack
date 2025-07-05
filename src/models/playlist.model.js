@@ -88,7 +88,7 @@ const updatePlaylist = async function (next){
         return next();
     }
     try {
-        const tracks = await mongoose.model('Track').find({ _id: { $in: this.trackList } }, 'artists genre');
+        const tracks = await mongoose.model('Track').find({ _id: { $in: this.trackList } }, 'artists genre totalDuration');
 
         const allArtists = new Set();
         const allGenre = new Set();

@@ -37,13 +37,9 @@ const TrackSchema = new Schema({
         }
     },
     audio: {
-        src: {
+        streamUrl: {
             type: String,
             required: [true, requiredError('track.audio.src')],
-            validate: {
-                validator: validator.isURL,
-                message: urlError('track.audio.src')
-            }
         },
         publicId: {
             type: String,

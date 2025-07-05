@@ -6,8 +6,9 @@ import { ApiResponse } from "../utils/ApiResponse.js";
 import { parseBuffer } from "music-metadata";
 import SavedTrack from "../models/saves/trackSave.model.js";
 import User from "../models/user.model.js";
-import { allTracks, handleFilesUploads , sortData, validateMongoose } from "../utils/helper.js";
+import { allTracks, handleFilesUploads , sortTracks, validateMongoose } from "../utils/helper.js";
 import Playlist from "../models/playlist.model.js";
+import { validationResult } from "express-validator";
 
 
 export const createTrack = async (req, res, next) => {
@@ -17,7 +18,11 @@ export const createTrack = async (req, res, next) => {
         throw new ApiError(401, "userId must be present");
     }
     try {
-
+        const errors = validationResult(req);
+        
+        if (!errors.isEmpty()) {
+            throw new ApiError(400 , "Validation Error", "" ,errors.array());
+        }
         const user = await User.findById(userId).select('role');
         if (!user) {
             throw new ApiError(404, "Invalid user");
@@ -37,9 +42,9 @@ export const createTrack = async (req, res, next) => {
             artists = [userId];
         }
 
-        const { audio, coverArt } = await handleFilesUploads(req.files);
+        const { audioRes, coverArt } = await handleFilesUploads(req.files);
 
-        audioId = audio.publicId;
+        audioId = audioRes.publicId;
         coverId = coverArt.publicId;
 
         const musicMetadata = await parseBuffer(req.files.track[0].buffer, 'audio/mpeg');
@@ -50,7 +55,10 @@ export const createTrack = async (req, res, next) => {
             primaryArtist,
             artists,
             coverArt,
-            audio,
+            audio: {
+                streamUrl: `/api/track/${audioRes.public_id}/stream`,
+                publicId: audioRes.public_id.split('/')[1]
+            },
             visibility,
             totalDuration,
             genre
@@ -60,7 +68,7 @@ export const createTrack = async (req, res, next) => {
             throw new ApiError(500,"Something went wrong while creating track");
         }
 
-        res.status(201).json(new ApiResponse(201, 'Track Created Successfully', track));
+        res.status(201).json(new ApiResponse(201, 'Track Created Successfully', {id: track._id}));
 
     } catch (error) {
 
@@ -73,11 +81,14 @@ export const createTrack = async (req, res, next) => {
 
 export const getAllTracks = async ( req ,res , next ) => {
     try {
-        let { page = 1, limit = 5 , sort } = req.query;
-        page = Math.max(1, parseInt(page));
-        limit = Math.max(1, parseInt(limit));
+        const errors = validationResult(req);
+        
+        if (!errors.isEmpty()) {
+            throw new ApiError(400 , "Validation Error", "" ,errors.array());
+        }
+        let { page = 1, limit = 5 , sort , artist } = req.query;
 
-        const trackRes = sort ? await sortData(Track, sort, page, limit) : await allTracks(page, limit);
+        const trackRes = sort ? await sortTracks(req.query) : await allTracks(req.query);
 
         return res.status(200).json(new ApiResponse(200, 'Successfully fetched tracks', trackRes));
 
@@ -87,13 +98,19 @@ export const getAllTracks = async ( req ,res , next ) => {
 }
 
 export const getTrackById = async (req, res, next) => {
-    const { trackId } = req.query;
+    const errors = validationResult(req);
+        
+    if (!errors.isEmpty()) {
+        throw new ApiError(400 , "Validation Error", "" ,errors.array());
+    }
+
+    const { trackId } = req.params;
 
     if (!validateMongoose(trackId)) {
         throw new ApiError(400, 'Invalid Track Id');
     }
 
-    const track = await Track.findById(trackId);
+    const track = await Track.findById(trackId).lean();
     const saves = await SavedTrack.find({ resource: trackId }).populate({
         path: 'savedBy',
         select: '_id username role profilePicture'
@@ -105,10 +122,15 @@ export const getTrackById = async (req, res, next) => {
         savedBy,
         saveCount: savedBy.length
     }));
-
 }
 
 export const deleteTrackById = async (req, res, next) => {
+    const errors = validationResult(req);
+        
+    if (!errors.isEmpty()) {
+        throw new ApiError(400 , "Validation Error", "" ,errors.array());
+    }
+
     let { trackId } = req.params;
 
     if (!validateMongoose(trackId)) {
@@ -134,14 +156,13 @@ export const deleteTrackById = async (req, res, next) => {
     }
 
     // update all playlist and users/artists
-
     // Updates playlists
     const playlistsHavingTrack = await Playlist.find({ trackList: trackId }).populate('trackList');
 
     for (const playlist of playlistsHavingTrack) {
         playlist.totalDuration = (playlist.totalDuration || 0) - (track.totalDuration || 0);
         
-        const updatedTrackList = playlist.trackList.filter(track => track._id.equals(trackId) );
+        const updatedTrackList = playlist.trackList.filter(track => !track._id.equals(trackId));
         playlist.trackList = updatedTrackList;
 
         // pre hook updates artist field while saving
@@ -165,6 +186,11 @@ export const deleteTrackById = async (req, res, next) => {
 
 export const updateTrackById = async (req, res, next) => {
     const userId = req.user.id;
+    const errors = validationResult(req);
+    
+    if (!errors.isEmpty()) {
+        throw new ApiError(400 , "Validation Error", "" ,errors.array());
+    }
     const { trackId } = req.params;
     const {
         name,
@@ -221,13 +247,18 @@ export const updateTrackById = async (req, res, next) => {
 
 export const updatePlayCount = async (req, res) => {
     const userId = req.user.id;
+    const errors = validationResult(req);
+    
+    if (!errors.isEmpty()) {
+        throw new ApiError(400 , "Validation Error", "" ,errors.array());
+    }
     const { trackId } = req.params;
 
     if (!userId) {
         throw new ApiError(401, "Must have a valid userId");
     }
 
-    if (!validateMongoose(playlistId)) {
+    if (!validateMongoose(trackId)) {
         throw new ApiError(400, "Invalid playlist id");
     }
     const track = await Track.findById(trackId);

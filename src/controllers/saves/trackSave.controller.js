@@ -2,6 +2,9 @@ import SavedTrack from "../../models/saves/trackSave.model.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { validateMongoose } from "../../utils/helper.js";
+import { validationResult } from "express-validator";
+
+
 const isExistingSave = async (trackId, userId) => {
     console.log("Is Existing hit");
     const user = await SavedTrack.findOne({ track: trackId, savedBy: userId });
@@ -9,15 +12,12 @@ const isExistingSave = async (trackId, userId) => {
     return user;
 }
 
-
-// New Save Controllers
-
-const removeSave = async (trackId , userId) => {
-    await SavedTrack.findOneAndDelete({ track: trackId, savedBy: userId });
-}
-
 export const toggletrackSave = async (req, res) => {
     const userId = req.user.id;
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        throw new ApiError(400 , "Validation Error", "" ,errors.array());
+    }
     const { trackId } = req.params;
 
     if (!validateMongoose(trackId)) {
@@ -26,7 +26,7 @@ export const toggletrackSave = async (req, res) => {
 
     const save = await isExistingSave(trackId, userId);
     if (save) {
-        await removeSave(trackId, userId);
+        await SavedTrack.findOneAndDelete({ track: trackId, savedBy: userId });
         res.status(200).json(new ApiResponse(200, 'Removed track from saved'));
     }
 
@@ -40,9 +40,13 @@ export const toggletrackSave = async (req, res) => {
 // get all track saved by the user
 export const getAlltrackSaves = async (req, res) => {
     const userId = req.user.id;
-    let { page = 1, limit = 10 } = req.query;
-    page = Math.max(1, parseInt(page));
-    limit = Math.max(1, parseInt(limit));
+    const errors = validationResult(req);
+
+    if (!errors.isEmpty()) {
+        throw new ApiError(400 , "Validation Error", "" ,errors.array());
+    }
+
+    const { page = 1, limit = 10 } = req.query;
 
     const saves = await SavedTrack.find({ savedBy: userId }).select('track').populate({
         path: 'track',

@@ -3,7 +3,7 @@ import validator from "validator";
 import { enumError, maxCharError, minCharError, requiredError, urlError} from "./errors.js";
 
 const subscriptionType = ['premium', 'student', 'standard']
-const userTypes = ['user', 'artist'];
+const userTypes = ['user', 'artist' , 'admin'];
 
 const UserSchema = new Schema({
     username: {
@@ -17,7 +17,6 @@ const UserSchema = new Schema({
     fullName: {
         type: String,
         trim: true,
-        unique: true,
         minlength: [3, minCharError('user.fullName',3)],
         maxlength: [30, maxCharError('user.fullName' , 30)],
     },
@@ -75,7 +74,7 @@ const UserSchema = new Schema({
     },
     bio: {
         type: String,
-        deafult: "User hasn't yet added a bio",
+        default: "User hasn't yet added a bio",
         maxlength: [150,  maxCharError('user.bio' , 150)],
     },
     location: {

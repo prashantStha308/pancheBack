@@ -2,6 +2,7 @@ import SavedPlaylist from "../../models/saves/playlistSave.model.js";
 import { ApiResponse } from "../../utils/ApiResponse.js";
 import { ApiError } from "../../utils/ApiError.js";
 import { validateMongoose } from "../../utils/helper.js";
+import { validationResult } from "express-validator";
 
 const isExistingSave = async (playlistId, userId) => {
     const save = await SavedPlaylist.findOne({ playlist: playlistId, savedBy: userId });
@@ -11,6 +12,12 @@ const isExistingSave = async (playlistId, userId) => {
 
 export const togglePlaylistSave = async (req, res, next) => {
     const userId = req.user.id;
+
+    const errors = validationResult(req);
+    if (!errors.isEmpty()) {
+        throw new ApiError(400 , "Validation Error", "" ,errors.array());
+    }
+
     const { playlistId } = req.params;
 
     if (!userId || !validateMongoose(userId)) {

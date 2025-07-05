@@ -102,28 +102,95 @@ export const getCreatedPlaylist = async (userId) => {
     }).lean();
 }
 
-export const sortData = async (model , sortBy , page , limit) => {
-    const sortByOptions = ["playCount", "durationPlayed","-playCount", "-durationPlayed"  ];
+export const sortTracks = async (queries) => {
+    
+    const { page = 1, limit = 5, sort, artist , search } = queries;
 
-    if (!sortByOptions.includes(sortBy)) {
+    const sortByOptions = ["playCount", "durationPlayed","-playCount", "-durationPlayed"];
+
+    if (!sortByOptions.includes(sort)) {
         throw new ApiError(400 , "Invalid sortBy query Input");
     }
 
-    return await model.find({}).skip((page - 1) * limit).limit(limit).sort(sortBy).populate({
+    const queryObj = {};
+    if (artist) {
+        queryObj['artist'] = artist;
+    }
+    if (search) {
+        queryObj['name'] = search;
+    }
+
+    return await Track.find(queryObj).skip((page - 1) * limit).limit(limit).sort(sort).populate({
         path: 'primaryArtist',
-        select: 'username , profilePicture , bio , followerCount'
+        select: 'username profilePicture bio followerCount'
     }). populate({
         path: 'artists',
-        select: 'username , profilePicture , bio , followerCount'
-    });;
+        select: 'username profilePicture bio followerCount'
+    });
 }
 
-export const allTracks = async ( page , limit ) => {
-    return await Track.find({}).skip((page - 1) * limit).limit(limit).populate({
+export const allTracks = async (queries) => {
+    
+    const { page = 1, limit = 5, artist , search } = queries;
+
+    const queryObj = {};
+    if (artist) {
+        queryObj['artist'] = artist;
+    }
+    if (search) {
+        queryObj['name'] = search;
+    }
+
+    return await Track.find(queryObj).skip((page - 1) * limit).limit(limit).populate({
         path: 'primaryArtist',
-        select: 'username , profilePicture , bio , followerCount'
+        select: 'username profilePicture bio followerCount'
     }). populate({
         path: 'artists',
-        select: 'username , profilePicture , bio , followerCount'
+        select: 'username profilePicture bio followerCount'
+    });
+}
+
+export const sortPlaylist = async (queries) => {
+        
+    const { page = 1, limit = 5, sort, search } = queries;
+
+    const sortByOptions = ["playCount", "durationPlayed","-playCount", "-durationPlayed"];
+
+    if (!sortByOptions.includes(sort)) {
+        throw new ApiError(400 , "Invalid sortBy query Input");
+    }
+
+    const queryObj = {};
+    if (search) {
+        queryObj['name'] = search;
+    }
+
+    return await Playlist.find(queryObj).skip((page - 1) * limit).limit(limit).sort(sort).populate({
+        path: 'primaryArtist',
+        select: 'username profilePicture bio followerCount'
+    }). populate({
+        path: 'artists',
+        select: 'username profilePicture bio followerCount'
+    });
+}
+
+export const allPlaylist = async (queries) => {
+    
+    const { page = 1, limit = 5, artist , search } = queries;
+
+    const queryObj = {};
+    if (artist) {
+        queryObj['artist'] = artist;
+    }
+    if (search) {
+        queryObj['name'] = search;
+    }
+
+    return await Playlist.find(queryObj).skip((page - 1) * limit).limit(limit).populate({
+        path: 'primaryArtist',
+        select: 'username profilePicture bio followerCount'
+    }). populate({
+        path: 'artists',
+        select: 'username profilePicture bio followerCount'
     });
 }

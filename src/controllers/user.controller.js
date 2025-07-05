@@ -1,15 +1,39 @@
+// Necessaries
 import bcrypt from "bcrypt";
 import jwt from "jsonwebtoken";
+import { JWT_SECRET } from "../config/env.config.js";
+// Models
 import User from "../models/user.model.js";
-import { deleteFromCloudinary, uploadToCloudinary } from "../services/cloudinary.services.js";
+// Cloudinary services
+import {
+    deleteFromCloudinary,
+    uploadToCloudinary
+} from "../services/cloudinary.services.js";
+// Helper functions
 import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
-import { handleImageUploads , validateMongoose , getFollowers , getFollowings , getSavedTracks , getSavedPlaylist, getCreatedPlaylist, getCreatedTracks } from "../utils/helper.js";
-import { JWT_SECRET } from "../config/env.config.js";
+import {
+    handleImageUploads,
+    validateMongoose,
+    getFollowers,
+    getFollowings,
+    getSavedTracks,
+    getSavedPlaylist,
+    getCreatedPlaylist,
+    getCreatedTracks
+} from "../utils/helper.js";
+// Validator
+import { validationResult } from "express-validator";
 
 export const createUser = async (req, res, next) => {
     let profilePictureId , coverArtId;
     try {
+        const errors = validationResult(req);
+
+        if (!errors.isEmpty()) {
+            throw new ApiError(400 , "Validation Error", "" ,errors);
+        }
+
         const body = req.body;
         const files = req.files;
 
@@ -69,6 +93,12 @@ export const createUser = async (req, res, next) => {
 }
 
 export const loginUser = async (req, res, next) => {
+     const errors = validationResult(req);
+
+    if (!errors.isEmpty()) {
+        throw new ApiError(400 , "Validation Error", "" ,errors);
+    }
+
     const body = req.body;
 
     const email = body.email;
@@ -83,7 +113,7 @@ export const loginUser = async (req, res, next) => {
         throw new ApiError('400', "Invalid Password");
     }
 
-    const token = jwt.sign({ id: user._id }, JWT_SECRET, {
+    const token = jwt.sign({ id: user._id , role: user.role }, JWT_SECRET, {
         expiresIn: '30d',
     });
 
@@ -128,6 +158,11 @@ export const getUserDetails = async (req, res, next) => {
 }
 // user detail by ID
 export const userDetailsById = async (req, res, next) => {
+    const errors = validationResult(req);
+        
+    if (!errors.isEmpty()) {
+        throw new ApiError(400 , "Validation Error", "" ,errors);
+    }
     const { userId } = req.params;
 
     if (!validateMongoose(userId)) {
@@ -153,14 +188,25 @@ export const userDetailsById = async (req, res, next) => {
 }
 
 export const getAllUsers = async (req, res, next) => {
+    const errors = validationResult(req);
 
-    let { limit = 10, page = 1 } = req.query;
+    if (!errors.isEmpty()) {
+        throw new ApiError(400 , "Validation Error", "" ,errors);
+    }
+    let { limit = 10, page = 1 , city , country , search } = req.query;
 
-    limit = Math.max(5, parseInt(limit));
-    page = Math.max(1, parseInt(page));
+    const queryObj = { role: 'user' };
+    if (city) {
+        queryObj['location.city'] = city;
+    }
+    if (country) {
+        queryObj['location.country'] = country;
+    }
+    if (search) {
+        queryObj['username'] = search;
+    }
 
-
-    const users = await User.find({role: 'user'}).select('-password -location -dob -subscription -trackList -playLists').skip((page - 1) * limit).limit(limit);
+    const users = await User.find(queryObj).select('-password -location -dob -subscription -trackList -playLists').skip((page - 1) * limit).limit(limit);
 
     res.status(200).json(new ApiResponse(200, "Fetched Users successfully", users));
 }
@@ -198,6 +244,12 @@ export const deleteUser = async (req, res, next) => {
 export const updateUser = async (req, res, next) => {
     let profilePictureId, coverArtId;
     try {
+        const errors = validationResult(req);
+
+        if (!errors.isEmpty()) {
+            throw new ApiError(400 , "Validation Error", "" ,errors);
+        }
+
         const userId = req.user.id;
         const {
             username,

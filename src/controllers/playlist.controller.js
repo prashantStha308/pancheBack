@@ -6,11 +6,18 @@ import { ApiError } from "../utils/ApiError.js";
 import { ApiResponse } from "../utils/ApiResponse.js";
 import { handleImageUploads, reorderTracks , validateMongoose } from "../utils/helper.js";
 import SavedPlaylist from "../models/saves/playlistSave.model.js";
+import { validationResult } from "express-validator";
+
 
 export const createPlaylist = async (req, res) => {
     let coverArtId;
     try {
         const userId = req.user.id;
+        const errors = validationResult(req);
+
+        if (!errors.isEmpty()) {
+            return res.status(400).json({ errors: errors.array() });
+        }
         const body = req.body;
         
         if (!userId) {
@@ -78,6 +85,11 @@ export const createPlaylist = async (req, res) => {
 }
 
 export const getAllPlaylist = async (req, res, next) => {
+    const errors = validationResult(req);
+            
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
     let { page = 1, limit = 5 } = req.query;
     page = Math.max(1, parseInt(page));
     limit = Math.max(1, parseInt(limit));
@@ -99,6 +111,11 @@ export const getAllPlaylist = async (req, res, next) => {
 }
 
 export const getPlaylistById = async (req, res, next) => {
+    const errors = validationResult(req);
+            
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
     const { playlistId } = req.params;
 
     if (!validateMongoose(playlistId)) {
@@ -122,6 +139,11 @@ export const getPlaylistById = async (req, res, next) => {
 
 export const deletePlaylistById = async (req, res) => {
     const userId = req.user.id;
+    const errors = validationResult(req);
+            
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
+    }
     const { playlistId } = req.params;
 
     if (!userId) {
@@ -157,8 +179,10 @@ export const deletePlaylistById = async (req, res) => {
 
 export const addTrackToPlaylist = async (req, res, next) => {
     const userId = req.user.id;
-    if (!userId) {
-        throw new ApiError(401 , "User a proper user id");
+    const errors = validationResult(req);
+            
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
     }
     const { playlistId } = req.params;
     // body should be trackId: id
@@ -189,9 +213,10 @@ export const addTrackToPlaylist = async (req, res, next) => {
 
 export const updatePlayCount = async (req, res) => {
     const userId = req.user.id;
-
-    if (!userId) {
-        throw new ApiError(401 , "User a proper user id");
+    const errors = validationResult(req);
+            
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
     }
     const { playlistId } = req.params;
     if (!validateMongoose(playlistId)) {
@@ -215,8 +240,10 @@ export const updateTotalPlayDuration = async (req, res, next) => {
 
 export const updatePlaylistById = async (req, res, next) => {
     const userId = req.user.id;
-    if (!userId) {
-        throw new ApiError(401 , "User a proper user id");
+    const errors = validationResult(req);
+            
+    if (!errors.isEmpty()) {
+        return res.status(400).json({ errors: errors.array() });
     }
 
     const { playlistId } = req.params;
