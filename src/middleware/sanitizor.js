@@ -18,8 +18,8 @@ export const sanitizeAndValidateUserBody = [
     body('username').trim().escape().isLength({ min: 1, max: 50 }),
     body('fullName').trim().escape().isLength({ min: 1, max: 50 }),
     body('password').isLength({ min: 8, max: 50 }),
-    body('role').escape(),
-    body('location').isJSON().optional(),
+    body('role').isIn(['user','artist']).escape(),
+    body('location').isObject().optional(),
 ];
 
 // Sanitize Query
